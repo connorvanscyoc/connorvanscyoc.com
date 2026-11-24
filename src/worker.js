@@ -6,6 +6,8 @@
      PUT  Connor's phone only (Authorization: Bearer <BANANA_KEY>): replace the log
    /api/pie
      GET  anyone: totals from the Pie Chart of Life tracker (see pie.js)
+   /api/tracker/script, /api/tracker/gps
+     the tracker app's own requests, owner key required (see tracker() below)
    The log lives in the BANANAS key-value store. Before the first change each day,
    the previous log is copied to backup:YYYY-MM-DD and kept for 120 days. */
 
@@ -75,11 +77,44 @@ async function bananas(req, env) {
   return json({ error: "Method not allowed." }, 405);
 }
 
+
+/* /api/tracker/script and /api/tracker/gps: the tracker app's two Apps Script addresses,
+   kept as secrets (PIE_SCRIPT_URL, TRACKER_GPS_URL). Owner key required. Method, query
+   string and body pass through untouched, so the app behaves exactly as it did before. */
+async function tracker(req, env, which) {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  const auth = req.headers.get("authorization") || "";
+  if (!env.BANANA_KEY || auth !== "Bearer " + env.BANANA_KEY) return json({ success: false, error: "Wrong key." }, 401);
+  const base = which === "gps" ? env.TRACKER_GPS_URL : env.PIE_SCRIPT_URL;
+  if (!base) return json({ success: false, error: "Not connected yet." }, 503);
+
+  // Pass the query string through byte for byte (trip descriptions are user text).
+  const target = new URL(base);
+  const extra = new URL(req.url).search.slice(1);
+  if (extra) target.search = (target.search ? target.search.slice(1) + "&" : "") + extra;
+  const init = { method: req.method, redirect: "follow", headers: {} };
+  const type = req.headers.get("content-type");
+  if (type) init.headers["content-type"] = type;
+  if (req.method !== "GET" && req.method !== "HEAD") init.body = await req.text();
+
+  const res = await fetch(target.toString(), init);
+  // A new entry or an edit changes the pie; let the public totals refresh right away.
+  if (which === "script" && (req.method === "POST" || target.searchParams.has("action")) && env.BANANAS) {
+    await env.BANANAS.delete("pie:summary");
+  }
+  return new Response(await res.text(), {
+    status: res.status,
+    headers: { "content-type": res.headers.get("content-type") || "application/json", "cache-control": "no-store" },
+  });
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/api/bananas") return bananas(req, env);
     if (url.pathname === "/api/pie") return pie(req, env, json);
+    if (url.pathname === "/api/tracker/script") return tracker(req, env, "script");
+    if (url.pathname === "/api/tracker/gps") return tracker(req, env, "gps");
     return env.ASSETS.fetch(req);
   },
 };

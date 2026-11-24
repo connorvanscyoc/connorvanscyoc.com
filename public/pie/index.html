@@ -113,15 +113,11 @@
 
   const fmt = n => Math.round(n).toLocaleString("en-US");
   const through = new Date(S.through).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-  const stat = (num, label, note) => `<li><span class="num">${num}</span><span class="label">${label}</span><span class="note">${note}</span></li>`;
+  const stat = (num, label) => `<li><span class="num">${num}</span><span class="label">${label}</span></li>`;
   document.getElementById("stats").innerHTML =
-    stat(fmt(S.daysMapped), "Days mapped", "since I was born") +
-    stat(S.places, "Places", "states and countries") +
-    stat(S.states, "States", "of 50") +
-    stat(S.countries, "Countries", "counting the U.S.") +
-    stat(S.flights, "Flights", "logged");
-  document.getElementById("lag").textContent =
-    `Counted through ${through}. It runs ${S.lagDays} days behind on purpose, so it never shows where I am right now.`;
+    stat(fmt(S.daysMapped), "Days mapped") + stat(S.places, "Places") + stat(S.states, "States") +
+    stat(S.countries, "Countries") + stat(S.flights, "Flights");
+  document.getElementById("lag").textContent = `Up to date as of ${through}.`;
 
   const home = S.order[0];
   document.getElementById("nohomeBtn").textContent = "Without " + home;
@@ -156,7 +152,7 @@
       .on("pointerleave", () => { tip.style.opacity = 0; });
     document.getElementById("legend").innerHTML = data.map(d => `
       <li><span class="sw" style="background:${color(d.k)}"></span><span>${d.k}${d.n ? ` (${d.n} places)` : ""}</span>
-      <span class="days">${fmt(d.v)} days</span><span class="pct">${(100 * d.v / sum).toFixed(d.v / sum < .1 ? 1 : 0)}%</span></li>`).join("");
+      <span class="days">${fmt(d.v)} days</span><span class="pct">${(100 * d.v / sum).toFixed(1)}%</span></li>`).join("");
     document.getElementById("lifeNote").textContent = view === "nohome"
       ? `Everything except ${home}, to see where the rest of my time went.`
       : `${fmt(sum)} days, split by the state or country I spent them in.`;

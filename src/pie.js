@@ -5,12 +5,11 @@
    address the app uses (the PIE_SCRIPT_URL secret) and turns it into totals:
    time spent in each place, for his whole life and for each year of it.
 
-   Privacy: only totals leave here, never individual entries, and time is only
-   counted up to LAG_DAYS ago, so nothing on the site can show where he is now. */
+   Privacy: only totals leave here, never individual entries or a current location. */
 
-const LAG_DAYS = 7;
+const LAG_DAYS = 0;   // Connor's call: totals can be fully up to date
 const CACHE_KEY = "pie:summary";
-const CACHE_MS = 60 * 60 * 1000;          // re-read the sheet at most once an hour
+const CACHE_MS = 10 * 60 * 1000;          // re-read the sheet at most every 10 minutes
 const BIRTH = Date.parse("1996-11-04T07:31:00-05:00");
 const DAY = 86400000;
 
