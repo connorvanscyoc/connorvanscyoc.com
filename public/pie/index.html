@@ -54,6 +54,8 @@
     padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
   .sw { width: 16px; height: 16px; border-radius: 4px; }
   .legend .days { color: var(--muted); text-align: right; }
+  .legend.scroll { max-height: 26.5rem; overflow-y: auto; overscroll-behavior: contain;
+    border-bottom: 1px solid var(--rule); padding-right: 6px; }
   .legend .pct { font-weight: 700; text-align: right; }
   .empty { color: var(--muted); padding: 40px 0; }
 
@@ -200,7 +202,7 @@
   const fmt = n => Math.round(n).toLocaleString("en-US");
   const fmt1 = n => (Math.round(n * 10) / 10).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const stat = (num, label) => `<li><span class="num">${num}</span><span class="label">${label}</span></li>`;
-  $("stats").innerHTML = stat(fmt(S.daysMapped), "Days mapped") + stat(S.places, "Places") + stat(S.states, "States") +
+  $("stats").innerHTML = stat(fmt(S.daysMapped), "Days") + stat(S.places, "Places") + stat(S.states, "States") +
     stat(S.countries, "Countries") + stat(S.flights, "Flights");
   $("asof").textContent = "Up to date as of " +
     new Date(S.through).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) + ".";
@@ -276,6 +278,7 @@
       : `${label}: nothing to show.`;
     $("moreBtn").hidden = total <= topN;
     $("moreBtn").textContent = showAll ? `Show the top ${topN} only` : `Show all ${total} places`;
+    $("legend").classList.toggle("scroll", showAll);
     if (!sum) { $("legend").innerHTML = '<li class="empty">No days in this range.</li>'; return; }
     const tip = $("pieTip"), box = $("pieBox");
     svg.attr("aria-label", "Pie of days spent in each place").selectAll("path")
@@ -292,7 +295,7 @@
       <li><span class="sw" style="background:${color(d.k)}"></span><span>${d.k}${d.n ? ` (${d.n} places)` : ""}</span>
       <span class="days">${fmt(d.v)} days</span><span class="pct">${fmt1(100 * d.v / sum)}%</span></li>`).join("");
   }
-  $("moreBtn").addEventListener("click", () => { showAll = !showAll; drawPie(); });
+  $("moreBtn").addEventListener("click", () => { showAll = !showAll; $("legend").scrollTop = 0; drawPie(); });
   document.querySelectorAll("[data-view]").forEach(btn => btn.addEventListener("click", () => {
     view = btn.dataset.view;
     document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
@@ -399,6 +402,7 @@
   function drawCharts() { drawLine(); drawCum(); }
 
   /* ---------- centerpoint (computed by the tracker app, see /api/pie/center) ---------- */
+  const CARTO_KEY = "cb1_3vq8_1_f27ba342c08f762c53d548d6";   // the tracker's free CARTO key
   let map = null, layers = [], trailOn = false, anim = null, animMarker = null, current = null;
   function setupCenter() {
     if (!C || !C.ranges || !C.ranges.length) {
@@ -407,7 +411,7 @@
     }
     $("cpRange").innerHTML = C.ranges.map(r => `<option value="${r.key}">${r.label}</option>`).join("");
     map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([39, -77], 6);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=" + CARTO_KEY, {
       attribution: "&copy; OpenStreetMap contributors &copy; CARTO", subdomains: "abcd", maxZoom: 18
     }).addTo(map);
     $("cpRange").addEventListener("change", drawCenter);
@@ -468,11 +472,23 @@
       <ul class="cp-list">
         <li><span>From my childhood home</span><b>${fmt(r.milesFromHome)} mi</b></li>
         <li><span>From where I was born</span><b>${fmt(r.milesFromBirth)} mi</b></li>
-        <li><span>Days counted</span><b>${fmt(r.totalDays)}</b></li>
+        <li><span>Days on the ground</span><b>${fmt(r.totalDays)}</b></li>
         <li><span>Places counted</span><b>${fmt(r.locationCount)}</b></li>
         ${r.gpsPoints ? `<li><span>GPS points</span><b>${fmt(r.gpsPoints)}</b></li>` : ""}
       </ul>
+      ${gapNote(r)}
       <p class="cp-note">Worked out by the tracker on my phone, with the same data and math it uses, as of ${new Date(C.computedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.</p>`;
+  }
+  // The centerpoint can only weigh time that has a spot on the map, so time in the air is left out.
+  function gapNote(r) {
+    const d = daysBetween(r.start, r.end), all = Object.values(d).reduce((a, v) => a + v, 0);
+    const air = Object.keys(d).filter(isFlight).reduce((a, k) => a + d[k], 0);
+    const other = all - air - r.totalDays;
+    if (air < 0.05 && Math.abs(other) < 1) return "";
+    const days = n => n < 10 ? fmt1(n) : fmt(n);
+    let t = `That's ${days(all)} days in this range minus ${days(air)} days in the air, which have no spot on the map.`;
+    if (other >= 1) t += ` Another ${days(other)} days have no GPS points, so they aren't counted either.`;
+    return `<p class="cp-note">${t}</p>`;
   }
   const fmtDate = t => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   function showFrame(i) {
