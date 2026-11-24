@@ -271,6 +271,28 @@ h1,h2,h3{margin:0;}
   .rl-when{font-size:12.5px;color:var(--cocoa-mute);margin-top:1px;}
   .rl-n{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1;}
 }
+
+/* calendar heatmap */
+.cal-key{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 16px;font-size:11.5px;color:var(--cocoa-mute);}
+.cal-sw{display:inline-flex;align-items:center;gap:5px;}
+.cal-sw i{display:inline-block;width:14px;height:14px;border-radius:4px;}
+.cal{display:flex;flex-wrap:wrap;gap:24px 28px;}
+.cal-month{width:100%;}
+.cal-title{font-size:14px;font-weight:700;margin-bottom:8px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-w{font-size:10.5px;color:var(--cocoa-mute);text-align:center;padding-bottom:2px;}
+.cal-d{position:relative;aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.cal-d b{font-size:14px;font-weight:800;color:var(--cocoa);}
+.cal-d.lv4 b,.cal-d.lv5 b{color:var(--paper);}
+.cal-num{position:absolute;top:3px;left:5px;font-size:9px;color:var(--cocoa-mute);}
+.cal-d.lv4 .cal-num,.cal-d.lv5 .cal-num{color:rgba(251,240,201,.75);}
+.cal-off{border:1px dashed var(--line);}
+.cal-blank{visibility:hidden;}
+.cal-today{outline:2px solid var(--cocoa);outline-offset:1px;}
+@media (min-width:900px){
+  .cal-month{width:auto;}
+  .cal-grid{grid-template-columns:repeat(7,42px);}
+}
 </style>
 </head>
 <body>
@@ -555,8 +577,9 @@ function computeStats() {
     var order = [], map = {};
     src.forEach(function (x) {
       var k = fmtKey(x.date);
-      if (!map[k]) { map[k] = { key: k, label: fmtLabel(x.date), n: 0 }; order.push(k); }
+      if (!map[k]) { map[k] = { key: k, label: fmtLabel(x.date), n: 0, days: 0 }; order.push(k); }
       map[k].n += x.n;
+      map[k].days += 1;
     });
     return order.map(function (k) { return map[k]; });
   }
@@ -595,6 +618,10 @@ function computeStats() {
   var bestDay = maxOf(days.filter(function (x) { return x.n > 0; }));
   var bestWeek = maxOf(weeks);
   var bestMonth = maxOf(months);
+  var runDays = {};
+  sorted.forEach(function (e) { if (e.t === "buy") { var k = dayKey(new Date(e.ts)); runDays[k] = (runDays[k] || 0) + e.n; } });
+  var runCount = Object.keys(runDays).length;
+  var avgHaul = runCount ? bought / runCount : null;
   var biggestHaul = sorted.filter(function (e) { return e.t === "buy"; })
     .reduce(function (b, e) { return (!b || e.n > b.n) ? e : b; }, null);
 
@@ -638,6 +665,7 @@ function computeStats() {
     weekday: weekday,
     bestDay: bestDay, bestWeek: bestWeek, bestMonth: bestMonth,
     biggestHaul: biggestHaul, peakInv: peakInv, peakTs: peakTs,
+    avgHaul: avgHaul, runCount: runCount, eatByDay: eatByDay,
     rate7: rate7, rate30: rate30, daysLeft: daysLeft,
     avgAll: daysTracked ? eatenComplete / daysTracked : 0,
     invPts: invPts, dayTicks: dayTicks,
@@ -1287,6 +1315,45 @@ function viewTrends(S) {
   return h;
 }
 
+function perDay(b) { return round(b.n / Math.max(1, b.days), 1) + " a day"; }
+
+/* Calendar heatmap: one block per month, each day shaded by bananas eaten.
+   Days before tracking began, and days still to come, are left blank. */
+var HEAT = ["rgba(70,46,20,.07)", "#F7D566", "#EFBB1C", "#C89A62", "#AC7C43", "#6B4A24"];
+function heatmapHTML(S) {
+  if (!S.days.length) return "";
+  var first = S.days[0].date, today = midnight(logicalNow());
+  var max = Object.keys(S.eatByDay).reduce(function (a, k) { return Math.max(a, S.eatByDay[k]); }, 1);
+  var level = function (n) { return n <= 0 ? 0 : Math.min(5, 1 + Math.floor((n - 1) * 5 / max)); };
+  var lo = function (lv) { return lv === 1 ? 1 : Math.floor((lv - 1) * max / 5) + 1; };
+  var hi = function (lv) { return lv === 5 ? max : Math.floor(lv * max / 5); };
+  var months = [];
+  for (var m = new Date(first.getFullYear(), first.getMonth(), 1); m <= today; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
+    var cells = ["M","T","W","T","F","S","S"].map(function (w) { return '<div class="cal-w">' + w + "</div>"; }).join("");
+    for (var b = 0; b < wdIndex(m); b++) cells += '<div class="cal-d cal-blank"></div>';
+    var last = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
+    for (var d = 1; d <= last; d++) {
+      var day = new Date(m.getFullYear(), m.getMonth(), d);
+      var isToday = day.getTime() === today.getTime();
+      if (day < first || day > today) {
+        cells += '<div class="cal-d cal-off"><span class="cal-num">' + d + "</span></div>";
+        continue;
+      }
+      var n = S.eatByDay[dayKey(day)] || 0, lv = level(n);
+      cells += '<div class="cal-d lv' + lv + (isToday ? " cal-today" : "") + '" style="background:' + HEAT[lv] + '" title="' +
+        esc(niceDate(day) + ": " + n + (n === 1 ? " banana" : " bananas") + (isToday ? " so far" : "")) + '">' +
+        '<span class="cal-num">' + d + "</span><b>" + n + "</b></div>";
+    }
+    months.push('<div class="cal-month"><div class="cal-title">' + MO[m.getMonth()] + " " + m.getFullYear() +
+      '</div><div class="cal-grid">' + cells + "</div></div>");
+  }
+  var key = '<div class="cal-key"><span>Fewer</span>' + [0,1,2,3,4,5].map(function (lv) {
+    var label = lv === 0 ? "0" : (lo(lv) === hi(lv) ? String(lo(lv)) : lo(lv) + "\u2013" + hi(lv));
+    return '<span class="cal-sw"><i style="background:' + HEAT[lv] + '"></i>' + label + "</span>";
+  }).join("") + "<span>More</span></div>";
+  return section("Banana calendar", "bananas eaten each day", key + '<div class="cal">' + months.join("") + "</div>");
+}
+
 function viewRecords(S) {
   if (!events.length) return blank(canEdit ? "No records yet. Every first banana is a personal best." : "Loading the bananas…");
 
@@ -1294,12 +1361,14 @@ function viewRecords(S) {
   var stats = {
     bests: [
       ["Most in a day", S.bestDay && S.bestDay.n, S.bestDay && niceDate(S.bestDay.date)],
-      ["Most in a week", S.bestWeek && S.bestWeek.n, S.bestWeek && "week of " + S.bestWeek.label],
-      ["Most in a month", S.bestMonth && S.bestMonth.n, S.bestMonth && S.bestMonth.label]
+      ["Most in a week", S.bestWeek && S.bestWeek.n, S.bestWeek && "week of " + S.bestWeek.label + ", " + perDay(S.bestWeek)],
+      ["Most in a month", S.bestMonth && S.bestMonth.n, S.bestMonth && S.bestMonth.label + ", " + perDay(S.bestMonth)]
     ],
     house: [
       ["Biggest haul", S.biggestHaul && S.biggestHaul.n, S.biggestHaul && niceDate(new Date(S.biggestHaul.ts))],
-      ["Fullest house", S.peakInv, S.peakTs && niceDate(new Date(S.peakTs))]
+      ["Fullest house", S.peakInv, S.peakTs && niceDate(new Date(S.peakTs))],
+      ["Average haul", S.avgHaul == null ? null : Math.round(S.avgHaul),
+        S.runCount ? "over " + S.runCount + " grocery " + (S.runCount === 1 ? "run" : "runs") : null]
     ],
     life: [
       ["Bananas eaten", S.eaten, "since " + (S.days.length ? shortDate(S.days[0].date) : "today")],
@@ -1316,7 +1385,7 @@ function viewRecords(S) {
             '</div></div><div class="rl-n">' + (r[1] == null ? "—" : r[1]) + "</div></li>";
         }).join("") + "</ul></div>";
     };
-    return '<div class="rec-wrap"><div class="rec-chart">' + wdChart + '</div><div class="rec-lists">' +
+    return heatmapHTML(S) + '<div class="rec-wrap"><div class="rec-chart">' + wdChart + '</div><div class="rec-lists">' +
       list("Personal bests", stats.bests) + list("The house", stats.house) + list("Lifetime", stats.life) +
       "</div></div>";
   }
@@ -1324,9 +1393,10 @@ function viewRecords(S) {
   var cards = function (rows) { return rows.map(function (r) { return card(r[0], r[1], r[2]); }).join(""); };
   return section("Personal bests", "",
       '<ul class="gcards gcards-3">' + cards(stats.bests) + "</ul>" +
-      '<ul class="gcards gcards-gap">' + cards(stats.house) + "</ul>") +
+      '<ul class="gcards gcards-3 gcards-gap">' + cards(stats.house) + "</ul>") +
     wdChart +
-    section("Lifetime", "", '<ul class="gcards">' + cards(stats.life) + "</ul>");
+    section("Lifetime", "", '<ul class="gcards">' + cards(stats.life) + "</ul>") +
+    heatmapHTML(S);
 }
 
 /* Only shows for the device holding the key. */
@@ -1406,7 +1476,7 @@ function render() {
   }
 
   var tabs = '<nav class="tabs"><a class="brand" href="/">Banana Counter</a>' +
-    (wide() ? [["trends","Trends"],["records","Records"]] : [["log","Log"],["trends","Trends"],["records","Records"]])
+    (wide() ? [["trends","Trends"],["records","Stats"]] : [["log","Log"],["trends","Trends"],["records","Stats"]])
       .concat(canEdit ? [["data","Data"]] : []).map(function (p) {
       return '<button class="tab' + (tab === p[0] ? " tab-on" : "") +
         '" data-act="tab" data-v="' + p[0] + '">' + p[1] + "</button>";
