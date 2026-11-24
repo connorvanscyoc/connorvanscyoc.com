@@ -4,8 +4,12 @@
    /api/bananas
      GET  anyone: the banana log, as { events: [...], updated }
      PUT  Connor's phone only (Authorization: Bearer <BANANA_KEY>): replace the log
+   /api/pie
+     GET  anyone: totals from the Pie Chart of Life tracker (see pie.js)
    The log lives in the BANANAS key-value store. Before the first change each day,
    the previous log is copied to backup:YYYY-MM-DD and kept for 120 days. */
+
+import { pie } from "./pie.js";
 
 const TYPES = new Set(["eat", "away", "buy", "open", "count"]);
 const CORS = {
@@ -75,6 +79,7 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/api/bananas") return bananas(req, env);
+    if (url.pathname === "/api/pie") return pie(req, env, json);
     return env.ASSETS.fetch(req);
   },
 };

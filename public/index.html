@@ -239,8 +239,8 @@ const PROJECTS = {
       text: "Every hike, walk, run and ride from Strava and Nike Run Club, stacked on one map.",
       live: "miles", unit: "miles on foot and bike", href: null },
     { symbol: "pie", title: "Pie chart of life",
-      text: "Where I've slept every night of my life, updated as I go.",
-      live: "nights", unit: "nights mapped", href: null },
+      text: "Every day of my life, split by the state or country I spent it in.",
+      live: "pie", unit: "days mapped", href: "pie/" },
     { symbol: "town", title: "Every town in America",
       text: "An interactive map of every town in the country.",
       live: "towns", unit: "towns", href: "https://claude.ai/artifact/RaRVQqNGPzFUYX8cdqGLCz" }
@@ -322,6 +322,12 @@ fetch("/api/bananas", { cache: "no-store" })
     if (!d || !Array.isArray(d.events) || !d.events.length) return;
     update("bananas", d.events.filter(e => e.t === "eat" || e.t === "away").reduce((a, e) => a + Number(e.n), 0));
   }).catch(() => {});
+
+// Pie chart of life: totals from the tracker on my phone (a week behind, on purpose)
+fetch("/api/pie", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.daysMapped) update("pie", d.daysMapped); })
+  .catch(() => {});
 
 // Anything else that's connected later can write data/live.json
 fetch("data/live.json", { cache: "no-store" })
