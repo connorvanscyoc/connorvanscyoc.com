@@ -216,6 +216,39 @@ h1,h2,h3{margin:0;}
 .sheet-err{font-size:13px;color:#8C3A12;margin:10px 0 0;}
 .dump{width:100%;height:120px;background:var(--paper-2);border:1px solid var(--line-strong);border-radius:12px;
   color:var(--cocoa-2);font-family:ui-monospace,monospace;font-size:11px;padding:10px;margin-bottom:14px;resize:none;}
+
+/* ---------------- desktop ---------------- */
+.brand{display:none;}
+.seg-sub{margin-top:-4px;}
+.seg-sub .seg-b{padding:6px 0;font-size:12px;}
+@media (min-width:900px){
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+  .tabs{order:-1;position:sticky;top:0;bottom:auto;border-top:none;border-bottom:1px solid var(--line-strong);
+    padding:0 max(32px,calc((100vw - 1100px)/2));align-items:center;gap:4px;}
+  .brand{display:block;margin-right:auto;font-weight:800;font-size:17px;color:var(--cocoa);text-decoration:none;letter-spacing:-.01em;}
+  .tab{flex:none;padding:18px 18px;font-size:14px;}
+  .tab-on{box-shadow:inset 0 -3px 0 var(--peel);}
+  .wrap{max-width:1100px;padding:28px 32px 64px;width:100%;}
+  .ticker{font-size:15px;margin-bottom:22px;}
+  .ticker b{font-size:22px;}
+  .log-grid{display:grid;grid-template-columns:minmax(0,1fr) 400px;grid-template-areas:"chart side" "recent side";gap:0 40px;align-items:start;}
+  .lg-chart{grid-area:chart;}
+  .lg-side{grid-area:side;position:sticky;top:84px;}
+  .lg-recent{grid-area:recent;}
+  .daybar-opts{flex-wrap:wrap;}
+  .feed-view{columns:2;column-gap:40px;}
+  .feed-view li{break-inside:avoid;}
+  .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 40px;align-items:start;}
+  .duo > .sec{border-bottom:none;}
+  .gcards-3{grid-template-columns:repeat(3,1fr);}
+  .gcard{padding:16px 18px;}
+  .gcard-n{font-size:32px;}
+  .sec-head h2{font-size:20px;}
+  .seg{max-width:480px;}
+  .undo{bottom:28px;}
+  .scrim{align-items:center;}
+  .sheet{max-width:460px;border-radius:22px;border:1px solid var(--line-strong);}
+}
 </style>
 </head>
 <body>
@@ -388,6 +421,9 @@ var events = load() || [];
 
 var tab = "log";
 var range = "day";
+var dayRange = (function () { try { return localStorage.getItem("banana-dayrange") || "30"; } catch (e) { return "30"; } })();
+/* Desktop gets its own layout and taller charts; phones keep the original. */
+function wide() { return window.matchMedia("(min-width: 900px)").matches; }
 var logDate = null;      // null = the current banana day
 var sheet = null;        // "custom" | "data"
 var undoEv = null;
@@ -1103,7 +1139,7 @@ function viewLog(S) {
       '<span class="lc-note">last 3 weeks</span></div>' +
       '<div class="chart" id="chart-log"></div></div>';
     if (S.recent.length) {
-      h += section("Recent", "", '<ul class="feed">' + S.recent.map(function (e) {
+      h += section("Recent", "", '<ul class="feed feed-view">' + S.recent.map(function (e) {
         return "<li>" + '<span class="chip chip-' + e.t + '">' + verbFor(e.t) + "</span>" +
           '<span class="feed-n">' + e.n + "</span>" +
           '<span class="feed-when">' + esc(niceDate(new Date(e.ts))) + "</span></li>";
@@ -1112,9 +1148,10 @@ function viewLog(S) {
     return h;
   }
 
-  h += '<div class="lc"><div class="lc-head"><span class="lc-title">Bananas eaten</span>' +
+  h += '<div class="log-grid"><div class="lg-chart">' +
+    '<div class="lc"><div class="lc-head"><span class="lc-title">Bananas eaten</span>' +
     '<span class="lc-note">last 3 weeks</span></div>' +
-    '<div class="chart" id="chart-log"></div></div>';
+    '<div class="chart" id="chart-log"></div></div></div><div class="lg-side">';
 
   h += '<div class="' + (back ? "daybar daybar-back" : "daybar") + '">' +
     '<span class="daybar-label">Logging for</span><div class="daybar-opts">' +
@@ -1139,7 +1176,8 @@ function viewLog(S) {
     '<input id="buyqty" class="buy-input" type="number" inputmode="numeric" min="1" placeholder="\u2014" value="' +
       esc(buyDraft) + '">' +
     '<button class="buy-go" data-act="buy">Add to house</button></div>' +
-    '<button class="pad-link fix-link" data-act="sheet" data-v="count">House count wrong? Correct it</button>';
+    '<button class="pad-link fix-link" data-act="sheet" data-v="count">House count wrong? Correct it</button>' +
+    '</div><div class="lg-recent">';
 
   if (S.recent.length) {
     var rows = S.recent.map(function (e) {
@@ -1153,7 +1191,7 @@ function viewLog(S) {
     }).join("");
     h += section("Recent", "", '<ul class="feed">' + rows + "</ul>");
   }
-  return h;
+  return h + "</div></div>";
 }
 
 function spanText(list) {
@@ -1174,7 +1212,7 @@ function viewTrends(S) {
     : '<p class="foot">Averages start tomorrow, once today is a full day.</p>';
   var h = section("Daily average", "full days only", avgs);
 
-  var note = range === "day" ? "last 30 days"
+  var note = range === "day" ? (dayRange === "all" ? "every day so far" : "last " + dayRange + " days")
     : range === "week" ? "by week, Monday start"
     : range === "month" ? "by month" : "by year";
   var seg = '<div class="seg">' + [["day","Day"],["week","Week"],["month","Month"],["year","Year"]]
@@ -1182,6 +1220,13 @@ function viewTrends(S) {
       return '<button class="seg-b' + (range === p[0] ? " seg-on" : "") +
         '" data-act="range" data-v="' + p[0] + '">' + p[1] + "</button>";
     }).join("") + "</div>";
+  if (range === "day") {
+    seg += '<div class="seg seg-sub">' + [["30","30 days"],["60","60 days"],["90","90 days"],["all","All"]]
+      .map(function (p) {
+        return '<button class="seg-b' + (dayRange === p[0] ? " seg-on" : "") +
+          '" data-act="dayrange" data-v="' + p[0] + '">' + p[1] + "</button>";
+      }).join("") + "</div>";
+  }
   h += section("Bananas eaten", note, seg + '<div class="chart" id="chart-eaten"></div>');
 
   h += section("Bananas in the house", "", '<div class="chart" id="chart-house"></div>');
@@ -1215,8 +1260,9 @@ function viewRecords(S) {
     "</ul>";
 
   return section("Personal bests", "", bests) +
+    '<div class="duo">' +
     (S.days.length ? section("Best day for each weekday", "", '<div class="chart" id="chart-wdbest"></div>') : "") +
-    section("Lifetime", "", life) +
+    section("Lifetime", "", life) + "</div>" +
     (canEdit
       ? section("Your data", "saved to connorvanscyoc.com",
           '<button class="ghost" data-act="sheet" data-v="data">Export or import entries</button>')
@@ -1287,7 +1333,7 @@ function render() {
       '<button data-act="undo">Undo</button></div>';
   }
 
-  var tabs = '<nav class="tabs">' +
+  var tabs = '<nav class="tabs"><a class="brand" href="/">Banana Counter</a>' +
     [["log","Log"],["trends","Trends"],["records","Records"]].map(function (p) {
       return '<button class="tab' + (tab === p[0] ? " tab-on" : "") +
         '" data-act="tab" data-v="' + p[0] + '">' + p[1] + "</button>";
@@ -1300,7 +1346,7 @@ function render() {
   if (tab === "records" && events.length) drawRecords(S);
   if (tab === "log") {
     logChart(document.getElementById("chart-log"), S.logWin, {
-      height: 150, barW: 11, avg: S.rate30,
+      height: wide() ? 260 : 150, barW: wide() ? 18 : 11, avg: S.rate30,
       highlightKey: logDate || S.todayKey, todayKey: S.todayKey
     });
   }
@@ -1308,7 +1354,7 @@ function render() {
 
 function drawTrends(S) {
   var cfg = range === "day"
-      ? { rows: S.daysLive.slice(-30).map(function (d) { return { label: shortDate(d.date), n: d.n }; }),
+      ? { rows: (dayRange === "all" ? S.daysLive : S.daysLive.slice(-Number(dayRange))).map(function (d) { return { label: shortDate(d.date), n: d.n }; }),
           cap: 16, live: "Today" }
     : range === "week"
       ? { rows: S.liveWeeks.slice(-16).map(function (w) { return { label: w.label, n: w.n }; }),
@@ -1320,7 +1366,7 @@ function drawTrends(S) {
           cap: 42, live: "This year" };
 
   barChart(document.getElementById("chart-eaten"), cfg.rows, {
-    height: 210, barW: cfg.cap, liveLast: true, lastLabel: cfg.live,
+    height: wide() ? 280 : 210, barW: cfg.cap, liveLast: true, lastLabel: cfg.live,
     tip: function (d, live) {
       var title = live ? cfg.live : (range === "week" ? "Week of " + d.label : d.label);
       return '<div class="d">' + esc(title) + "</div><div><b>" + d.n + "</b> " +
@@ -1328,12 +1374,12 @@ function drawTrends(S) {
     }
   });
 
-  stepChart(document.getElementById("chart-house"), S.invPts, S.dayTicks, 210);
+  stepChart(document.getElementById("chart-house"), S.invPts, S.dayTicks, wide() ? 240 : 210);
 
   if (S.days.length) {
     lineChart(document.getElementById("chart-week"), S.weekday.map(function (w) {
       return { label: w.label, long: w.long, n: w.avg, count: w.count };
-    }), { height: 200 });
+    }), { height: wide() ? 240 : 200 });
   }
 }
 
@@ -1345,7 +1391,7 @@ function drawRecords(S) {
     return { label: w.label, long: w.long, n: has ? w.best.n : 0,
              sub: has ? shortDate(w.best.date) : "\u2014", date: has ? w.best.date : null };
   }), {
-    height: 214, barW: 28, allLabels: true, valueLabels: true,
+    height: wide() ? 240 : 214, barW: 28, allLabels: true, valueLabels: true,
     colorFor: function (d) { return d.n === top && top > 0 ? "var(--cocoa)" : "var(--tan)"; },
     tip: function (d) {
       return d.date
@@ -1380,6 +1426,10 @@ document.addEventListener("click", function (ev) {
     }
     case "tab":
       tab = t.getAttribute("data-v"); render(); window.scrollTo(0, 0); break;
+    case "dayrange":
+      dayRange = t.getAttribute("data-v");
+      try { localStorage.setItem("banana-dayrange", dayRange); } catch (e) {}
+      render(); break;
     case "range":
       range = t.getAttribute("data-v"); render(); break;
     case "day": {
@@ -1473,10 +1523,13 @@ document.addEventListener("keydown", function (ev) {
   }
 });
 
-var rz;
+var rz, lastW = window.innerWidth;
 window.addEventListener("resize", function () {
   clearTimeout(rz);
-  rz = setTimeout(function () { if (tab === "trends") render(); }, 150);
+  rz = setTimeout(function () {
+    if (window.innerWidth === lastW) return;
+    lastW = window.innerWidth; render();
+  }, 150);
 });
 
 /* Installable manifest, generated inline so this stays one file. */
