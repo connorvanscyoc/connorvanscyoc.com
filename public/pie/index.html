@@ -8,8 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../vendor/leaflet-1.9.4/leaflet.css">
 <style>
-  :root { --ink: #141414; --muted: #5C5C58; --paper: #FFFFFF; --rule: #E3E3E0; --grid: #EEEEEA; --other: #C9C9C4; --accent: #2456B8; }
+  :root { --ink: #141414; --muted: #5C5C58; --paper: #FFFFFF; --rule: #E3E3E0; --grid: #EEEEEA; --other: #C9C9C4; --accent: #2456B8; --trail: #5B5BD6; }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", system-ui, sans-serif;
@@ -34,13 +35,17 @@
   .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
   select, input[type=date] { font: inherit; font-size: 15px; color: var(--ink); background: var(--paper);
     border: 2px solid var(--ink); border-radius: 10px; padding: 7px 10px; min-height: 42px; }
-  .view { display: inline-flex; border: 2px solid var(--ink); border-radius: 999px; padding: 2px; }
-  .view button { font: inherit; font-size: 14px; font-weight: 650; color: var(--ink); background: none; border: 0;
+  .seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 999px; padding: 2px; }
+  .seg button { font: inherit; font-size: 14px; font-weight: 650; color: var(--ink); background: none; border: 0;
     border-radius: 999px; padding: 7px 14px; cursor: pointer; }
-  .view button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .btn { font: inherit; font-size: 14px; font-weight: 650; color: var(--ink); background: var(--paper);
+    border: 2px solid var(--ink); border-radius: 999px; padding: 7px 16px; cursor: pointer; min-height: 42px; }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .linkbtn { font: inherit; font-size: 14px; font-weight: 650; color: var(--accent); background: none; border: 0; padding: 10px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
-  .main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
-  .pie-box { position: relative; }
+  .main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  .pie-box { position: relative; position: sticky; top: 16px; }
   .pie-box svg { width: 100%; height: auto; display: block; max-width: 520px; margin: 0 auto; }
   .slice { stroke: #fff; stroke-width: 2; }
   .slice:hover { stroke: var(--ink); stroke-width: 2.5; }
@@ -62,7 +67,6 @@
   .chart { position: relative; }
   .chart svg { display: block; width: 100%; overflow: visible; }
   .axis text { font-size: 11px; fill: var(--muted); font-family: inherit; }
-  .axis path, .axis line { stroke: var(--rule); }
   .gridline { stroke: var(--grid); }
   .tip { position: absolute; pointer-events: none; opacity: 0; background: var(--paper); border: 2px solid var(--ink);
     border-radius: 8px; padding: 8px 12px; font-size: 13.5px; line-height: 1.45; white-space: nowrap; z-index: 5; }
@@ -70,6 +74,23 @@
   .tip .row { display: flex; align-items: center; gap: 7px; }
   .tip .row i { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .tip .row b { margin-left: auto; padding-left: 14px; }
+  .chart-title { font-size: 15px; font-weight: 700; margin: 26px 0 6px; }
+
+  /* centerpoint */
+  .cp { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 32px; align-items: start; }
+  #map { height: 520px; border: 2px solid var(--ink); border-radius: 14px; overflow: hidden; z-index: 0; }
+  .cp-info .where { font-variation-settings: "wdth" 110; font-weight: 800; font-size: 26px; line-height: 1.15; margin: 0 0 4px; }
+  .cp-info .coords { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  .cp-list { list-style: none; margin: 0 0 18px; padding: 0; border-top: 1px solid var(--rule); }
+  .cp-list li { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+  .cp-list b { font-weight: 750; }
+  .anim { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+  .anim input[type=range] { flex: 1; accent-color: var(--trail); }
+  .anim .when { min-width: 7.5em; font-size: 14px; color: var(--muted); text-align: right; }
+  .cp-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--trail); border: 2px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.35); }
+  .trail-label { display: inline-block; background: rgba(91, 91, 214, .88); color: #fff; padding: 1px 5px; border-radius: 6px;
+    font: 600 10px/1.4 "Archivo", system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+  .cp-note { font-size: 13.5px; color: var(--muted); margin: 10px 0 0; }
 
   .years { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 18px 12px; }
   .yr { text-align: center; }
@@ -83,7 +104,9 @@
 
   @media (max-width: 860px) {
     .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .main { grid-template-columns: 1fr; gap: 28px; }
+    .main, .cp { grid-template-columns: 1fr; gap: 28px; }
+    .pie-box { position: relative; top: 0; }
+    #map { height: 380px; }
   }
 </style>
 </head>
@@ -97,37 +120,49 @@
   <div id="content" hidden>
     <h2>Where my time went</h2>
     <p class="sub" id="rangeNote"></p>
-    <div class="controls">
-      <label class="field">Time range
-        <select id="range">
-          <option value="all">Lifetime</option>
-          <option value="thisYear">This year</option>
-          <option value="thisMonth">This month</option>
-          <option value="year">A specific year</option>
-          <option value="custom">Custom range</option>
-        </select>
-      </label>
-      <label class="field" id="yearField" hidden>Year <select id="year"></select></label>
-      <label class="field" id="fromField" hidden>From <input type="date" id="from"></label>
-      <label class="field" id="toField" hidden>To <input type="date" id="to"></label>
-      <div class="view" role="group" aria-label="Pie view">
-        <button type="button" data-view="all" aria-pressed="true">Everywhere</button>
-        <button type="button" data-view="nohome" id="nohomeBtn" aria-pressed="false">Without home</button>
-      </div>
-    </div>
-    <div class="main" id="pieMain">
+    <div class="controls" id="r1"></div>
+    <div class="main">
       <div class="pie-box" id="pieBox"><svg id="pie" viewBox="-210 -210 420 420" role="img"></svg><div class="tip" id="pieTip"></div></div>
-      <ul class="legend" id="legend"></ul>
+      <div>
+        <div class="controls" style="margin-bottom:12px">
+          <div class="seg" role="group" aria-label="Pie view">
+            <button type="button" data-view="all" aria-pressed="true">Everywhere</button>
+            <button type="button" data-view="nohome" id="nohomeBtn" aria-pressed="false">Without home</button>
+          </div>
+        </div>
+        <ul class="legend" id="legend"></ul>
+        <button type="button" class="linkbtn" id="moreBtn" hidden></button>
+      </div>
     </div>
 
     <h2>Days per year</h2>
-    <p class="sub">How many days of each year I spent in each place. Pick the places to compare.</p>
+    <p class="sub">How much time I spent in each place, for any stretch of my life. Pick the places to compare.</p>
+    <div class="controls" id="r2"></div>
     <div class="chips" id="chips" role="group" aria-label="Places to show"></div>
+    <div class="chart-title" id="lineTitle"></div>
     <div class="chart" id="lineBox"><div class="tip" id="lineTip"></div></div>
-
-    <h2>Running total</h2>
-    <p class="sub">Days in each place, added up over the time range, for the same places.</p>
+    <div class="chart-title">Running total</div>
     <div class="chart" id="cumBox"><div class="tip" id="cumTip"></div></div>
+
+    <h2>The centerpoint of my life</h2>
+    <p class="sub">If you averaged every place I've been, weighted by how long I was there, this is where it would land. The trail shows how that point has moved.</p>
+    <div class="controls">
+      <label class="field">Time range <select id="cpRange"></select></label>
+      <div class="seg" role="group" aria-label="Trail">
+        <button type="button" data-trail="off" aria-pressed="true">Centerpoint</button>
+        <button type="button" data-trail="on" aria-pressed="false">Show the trail</button>
+      </div>
+    </div>
+    <div class="cp">
+      <div><div id="map" role="img" aria-label="Map of the centerpoint"></div>
+        <div class="anim" id="anim" hidden>
+          <button type="button" class="btn" id="playBtn">Play</button>
+          <input type="range" id="slider" min="0" max="1000" value="1000" aria-label="Move along the trail">
+          <span class="when" id="animWhen"></span>
+        </div>
+      </div>
+      <div class="cp-info" id="cpInfo"></div>
+    </div>
 
     <h2>Every year of my life</h2>
     <p class="sub">One pie per year, birthday to birthday. Hover over a year to see where it went.</p>
@@ -141,13 +176,17 @@
 </div>
 
 <script src="../vendor/d3.min.js"></script>
+<script src="../vendor/leaflet-1.9.4/leaflet.js"></script>
 <script>
 (async function () {
   const msg = document.getElementById("msg");
-  let S, T;
+  let S, T, C = null;
   try {
-    const [a, b] = await Promise.all([fetch("/api/pie", { cache: "no-store" }), fetch("/api/pie/timeline", { cache: "no-store" })]);
+    const [a, b, c] = await Promise.all([
+      fetch("/api/pie", { cache: "no-store" }), fetch("/api/pie/timeline", { cache: "no-store" }),
+      fetch("/api/pie/center", { cache: "no-store" }).catch(() => null)]);
     S = await a.json(); T = await b.json();
+    if (c && c.ok) C = await c.json();
     if (!a.ok || !b.ok || !S.life || !T.entries) throw new Error("no data");
   } catch (e) {
     msg.textContent = "The pie couldn’t load right now. Try again in a bit.";
@@ -156,14 +195,14 @@
   msg.hidden = true;
   document.getElementById("content").hidden = false;
 
+  const $ = id => document.getElementById(id);
   const DAY = 86400000;
   const fmt = n => Math.round(n).toLocaleString("en-US");
   const fmt1 = n => (Math.round(n * 10) / 10).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const stat = (num, label) => `<li><span class="num">${num}</span><span class="label">${label}</span></li>`;
-  document.getElementById("stats").innerHTML =
-    stat(fmt(S.daysMapped), "Days mapped") + stat(S.places, "Places") + stat(S.states, "States") +
+  $("stats").innerHTML = stat(fmt(S.daysMapped), "Days mapped") + stat(S.places, "Places") + stat(S.states, "States") +
     stat(S.countries, "Countries") + stat(S.flights, "Flights");
-  document.getElementById("asof").textContent = "Up to date as of " +
+  $("asof").textContent = "Up to date as of " +
     new Date(S.through).toLocaleString("en-US", { month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) + ".";
 
   /* ---------- the timeline, and the tracker's own math ---------- */
@@ -173,9 +212,7 @@
   const OTHER = "Everywhere else";
   const color = k => k === OTHER ? "var(--other)" : (T.colors[k] || "var(--other)");
   const home = T.places[0];
-
-  // Days in each place between a and b: each arrival lasts until the next one.
-  function daysBetween(a, b) {
+  function daysBetween(a, b) {   // each arrival lasts until the next one
     const out = {};
     for (let i = 0; i < entries.length; i++) {
       const s = entries[i].t, e = i + 1 < entries.length ? entries[i + 1].t : Date.now();
@@ -185,47 +222,60 @@
     return out;
   }
 
-  /* ---------- time range ---------- */
-  const $ = id => document.getElementById(id);
+  /* ---------- time-range controls (two independent copies) ---------- */
   const yearsAll = d3.range(new Date(first).getFullYear(), new Date().getFullYear() + 1);
-  $("year").innerHTML = yearsAll.slice().reverse().map(y => `<option>${y}</option>`).join("");
   const toInput = t => new Date(t - new Date(t).getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  $("from").value = toInput(first); $("to").value = toInput(Date.now());
-  $("from").min = $("to").min = toInput(first); $("from").max = $("to").max = toInput(Date.now());
-
-  function range() {
-    const now = Date.now(), d = new Date(), r = $("range").value;
-    if (r === "thisYear") return [Math.max(first, new Date(d.getFullYear(), 0, 1).getTime()), now, "This year so far"];
-    if (r === "thisMonth") return [Math.max(first, new Date(d.getFullYear(), d.getMonth(), 1).getTime()), now, "This month so far"];
-    if (r === "year") { const y = +$("year").value; return [Math.max(first, new Date(y, 0, 1).getTime()), Math.min(now, new Date(y + 1, 0, 1).getTime()), String(y)]; }
-    if (r === "custom") {
-      const a = $("from").value ? new Date($("from").value + "T00:00:00").getTime() : first;
-      const b = $("to").value ? new Date($("to").value + "T23:59:59").getTime() : now;
-      return [Math.max(first, a), Math.min(now, b), "From " + $("from").value + " to " + $("to").value];
-    }
-    return [first, now, "My whole life"];
+  function rangeControl(id, onChange) {
+    const el = $(id);
+    el.insertAdjacentHTML("afterbegin", `
+      <label class="field">Time range <select data-r="kind">
+        <option value="all">Lifetime</option><option value="thisYear">This year</option><option value="thisMonth">This month</option>
+        <option value="year">A specific year</option><option value="custom">Custom range</option></select></label>
+      <label class="field" data-show="year" hidden>Year <select data-r="year">${yearsAll.slice().reverse().map(y => `<option>${y}</option>`).join("")}</select></label>
+      <label class="field" data-show="custom" hidden>From <input type="date" data-r="from" value="${toInput(first)}" min="${toInput(first)}" max="${toInput(Date.now())}"></label>
+      <label class="field" data-show="custom" hidden>To <input type="date" data-r="to" value="${toInput(Date.now())}" min="${toInput(first)}" max="${toInput(Date.now())}"></label>`);
+    const q = k => el.querySelector(`[data-r="${k}"]`);
+    el.addEventListener("change", e => {
+      if (e.target === q("kind")) el.querySelectorAll("[data-show]").forEach(f => f.hidden = f.dataset.show !== q("kind").value);
+      onChange();
+    });
+    return function get() {
+      const now = Date.now(), d = new Date(), r = q("kind").value;
+      if (r === "thisYear") return [Math.max(first, new Date(d.getFullYear(), 0, 1).getTime()), now, "This year so far"];
+      if (r === "thisMonth") return [Math.max(first, new Date(d.getFullYear(), d.getMonth(), 1).getTime()), now, "This month so far"];
+      if (r === "year") { const y = +q("year").value; return [Math.max(first, new Date(y, 0, 1).getTime()), Math.min(now, new Date(y + 1, 0, 1).getTime()), String(y)]; }
+      if (r === "custom") {
+        const a = q("from").value ? new Date(q("from").value + "T00:00:00").getTime() : first;
+        const b = q("to").value ? new Date(q("to").value + "T23:59:59").getTime() : now;
+        return [Math.max(first, Math.min(a, b)), Math.min(now, Math.max(a, b)), "From " + q("from").value + " to " + q("to").value];
+      }
+      return [first, now, "My whole life"];
+    };
   }
 
   /* ---------- pie ---------- */
-  let view = "all";
+  let view = "all", showAll = false;
   $("nohomeBtn").textContent = "Without " + home;
-  const MAX = 10;
-  function slices(days, skip) {
+  function slices(days, skip, max) {
     const keys = Object.keys(days).filter(k => k !== skip && days[k] > 0).sort((a, b) => days[b] - days[a]);
-    const top = keys.slice(0, MAX).map(k => ({ k, v: days[k] }));
-    const rest = keys.slice(MAX).reduce((a, k) => a + days[k], 0);
-    if (rest > 0) top.push({ k: OTHER, v: rest, n: keys.length - MAX });
-    return top;
+    const top = keys.slice(0, max).map(k => ({ k, v: days[k] }));
+    const rest = keys.slice(max).reduce((a, k) => a + days[k], 0);
+    if (rest > 0) top.push({ k: OTHER, v: rest, n: keys.length - max });
+    return { list: top, total: keys.length };
   }
   const arc = d3.arc().innerRadius(0).outerRadius(200);
+  const range1 = rangeControl("r1", () => drawPie());
   function drawPie() {
-    const [a, b, label] = range();
-    const data = slices(daysBetween(a, b), view === "nohome" ? home : null);
+    const [a, b, label] = range1();
+    const topN = view === "nohome" ? 15 : 10;   // leaving out home frees room for more places
+    const { list: data, total } = slices(daysBetween(a, b), view === "nohome" ? home : null, showAll ? Infinity : topN);
     const sum = d3.sum(data, d => d.v);
     const svg = d3.select("#pie"); svg.selectAll("*").remove();
     $("rangeNote").textContent = sum
       ? `${label}: ${fmt(sum)} days${view === "nohome" ? ", leaving out " + home : ""}, split by the state or country I spent them in.`
       : `${label}: nothing to show.`;
+    $("moreBtn").hidden = total <= topN;
+    $("moreBtn").textContent = showAll ? `Show the top ${topN} only` : `Show all ${total} places`;
     if (!sum) { $("legend").innerHTML = '<li class="empty">No days in this range.</li>'; return; }
     const tip = $("pieTip"), box = $("pieBox");
     svg.attr("aria-label", "Pie of days spent in each place").selectAll("path")
@@ -233,8 +283,7 @@
       .attr("class", "slice").attr("d", arc).attr("fill", d => color(d.data.k))
       .on("pointermove", (ev, d) => {
         const r = box.getBoundingClientRect();
-        tip.innerHTML = `<strong>${d.data.k}</strong>${fmt1(d.data.v)} days, ${fmt1(100 * d.data.v / sum)}%` +
-          (d.data.n ? `<br>${d.data.n} smaller places` : "");
+        tip.innerHTML = `<strong>${d.data.k}</strong>${fmt1(d.data.v)} days, ${fmt1(100 * d.data.v / sum)}%` + (d.data.n ? `<br>${d.data.n} smaller places` : "");
         tip.style.left = Math.max(100, Math.min(r.width - 100, ev.clientX - r.left)) + "px";
         tip.style.top = (ev.clientY - r.top) + "px"; tip.style.transform = "translate(-50%, calc(-100% - 12px))"; tip.style.opacity = 1;
       })
@@ -243,22 +292,27 @@
       <li><span class="sw" style="background:${color(d.k)}"></span><span>${d.k}${d.n ? ` (${d.n} places)` : ""}</span>
       <span class="days">${fmt(d.v)} days</span><span class="pct">${fmt1(100 * d.v / sum)}%</span></li>`).join("");
   }
+  $("moreBtn").addEventListener("click", () => { showAll = !showAll; drawPie(); });
+  document.querySelectorAll("[data-view]").forEach(btn => btn.addEventListener("click", () => {
+    view = btn.dataset.view;
+    document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    drawPie();
+  }));
 
-  /* ---------- place toggles (shared by both line charts) ---------- */
+  /* ---------- place toggles ---------- */
   const selected = new Set(T.places.filter(p => !isFlight(p)).slice(0, 6));
-  function drawChips() {
-    $("chips").innerHTML = T.places.map(p =>
-      `<button type="button" class="chip" data-place="${p}" aria-pressed="${selected.has(p)}"><i style="background:${color(p)}"></i>${p}</button>`).join("");
-  }
+  $("chips").innerHTML = T.places.map(p =>
+    `<button type="button" class="chip" data-place="${p}" aria-pressed="${selected.has(p)}"><i style="background:${color(p)}"></i>${p}</button>`).join("");
   $("chips").addEventListener("click", e => {
     const c = e.target.closest(".chip"); if (!c) return;
     const p = c.dataset.place; selected.has(p) ? selected.delete(p) : selected.add(p);
     c.setAttribute("aria-pressed", String(selected.has(p)));
-    drawLine(); drawCum();
+    drawCharts();
   });
   const chosen = () => T.places.filter(p => selected.has(p));
 
   /* ---------- line charts ---------- */
+  const range2 = rangeControl("r2", () => drawCharts());
   const H = () => window.innerWidth < 700 ? 280 : 400;
   const M = { t: 16, r: 16, b: 32, l: 46 };
   function frame(boxId) {
@@ -268,13 +322,12 @@
     const svg = d3.select(box).insert("svg", ".tip").attr("viewBox", `0 0 ${w} ${h}`).attr("height", h);
     return { box, svg, w, h, iw: w - M.l - M.r, ih: h - M.t - M.b };
   }
-  function yAxis(f, y, title) {
+  function yAxis(f, y) {
     f.svg.append("g").attr("transform", `translate(${M.l},0)`).selectAll("line")
       .data(y.ticks(5)).join("line").attr("class", "gridline").attr("x1", 0).attr("x2", f.iw).attr("y1", y).attr("y2", y);
     f.svg.append("g").attr("class", "axis").attr("transform", `translate(${M.l},0)`)
-      .call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(8).tickFormat(d3.format(",")))
-      .call(g => g.select(".domain").remove());
-    f.svg.append("text").attr("x", 0).attr("y", 10).attr("font-size", 11).attr("fill", "var(--muted)").text(title);
+      .call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(8).tickFormat(d3.format(","))).call(g => g.select(".domain").remove());
+    f.svg.append("text").attr("x", 0).attr("y", 10).attr("font-size", 11).attr("fill", "var(--muted)").text("Days");
   }
   function hoverLayer(f, xs, xPos, tipId, rowsAt, titleAt) {
     const tip = $(tipId);
@@ -286,8 +339,7 @@
         xs.forEach((x, i) => { const d = Math.abs(xPos(x) - mx); if (d < bd) { bd = d; best = i; } });
         const x = xPos(xs[best]);
         rule.attr("x1", x).attr("x2", x).attr("opacity", .35);
-        const rows = rowsAt(best).sort((a, b) => b.v - a.v);
-        tip.innerHTML = `<strong>${titleAt(best)}</strong>` + rows.map(r =>
+        tip.innerHTML = `<strong>${titleAt(best)}</strong>` + rowsAt(best).sort((a, b) => b.v - a.v).map(r =>
           `<div class="row"><i style="background:${color(r.k)}"></i>${r.k}<b>${fmt1(r.v)}</b></div>`).join("");
         const left = x + 14 + 220 > f.w ? x - 14 : x + 14;
         tip.style.left = left + "px"; tip.style.top = M.t + "px";
@@ -295,79 +347,166 @@
       })
       .on("pointerleave", () => { rule.attr("opacity", 0); tip.style.opacity = 0; });
   }
-
   function drawLine() {
-    const f = frame("lineBox"), [a, b] = range(), places = chosen();
-    const years = d3.range(new Date(a).getFullYear(), new Date(b).getFullYear() + 1);
-    const perYear = years.map(y => daysBetween(Math.max(a, new Date(y, 0, 1).getTime()), Math.min(b, new Date(y + 1, 0, 1).getTime())));
-    const x = d3.scalePoint().domain(years).range([M.l, M.l + f.iw]).padding(.3);
-    const max = d3.max(places, p => d3.max(perYear, d => d[p] || 0)) || 1;
+    const f = frame("lineBox"), [a, b] = range2(), places = chosen();
+    // Up to about two years, a point per month reads better than one or two points per year.
+    const monthly = (b - a) <= 731 * DAY;
+    const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const buckets = [];
+    if (monthly) {
+      for (let d = new Date(new Date(a).getFullYear(), new Date(a).getMonth(), 1); d.getTime() < b; d = new Date(d.getFullYear(), d.getMonth() + 1, 1))
+        buckets.push({ label: MO[d.getMonth()] + " " + d.getFullYear(), short: MO[d.getMonth()] + (d.getMonth() === 0 ? " '" + String(d.getFullYear()).slice(2) : ""),
+          s: Math.max(a, d.getTime()), e: Math.min(b, new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime()) });
+    } else {
+      for (let y = new Date(a).getFullYear(); y <= new Date(b).getFullYear(); y++)
+        buckets.push({ label: String(y), short: String(y), s: Math.max(a, new Date(y, 0, 1).getTime()), e: Math.min(b, new Date(y + 1, 0, 1).getTime()) });
+    }
+    $("lineTitle").textContent = monthly ? "Days per month" : "Days per year";
+    const per = buckets.map(k => daysBetween(k.s, k.e));
+    const idx = buckets.map((_, i) => i);
+    const x = d3.scalePoint().domain(idx).range([M.l, M.l + f.iw]).padding(.3);
+    const max = d3.max(places, p => d3.max(per, d => d[p] || 0)) || 1;
     const y = d3.scaleLinear().domain([0, max]).nice().range([M.t + f.ih, M.t]);
-    yAxis(f, y, "Days");
-    const every = Math.ceil(years.length / Math.max(2, Math.floor(f.iw / 46)));
+    yAxis(f, y);
+    const every = Math.ceil(buckets.length / Math.max(2, Math.floor(f.iw / 50)));
     f.svg.append("g").attr("class", "axis").attr("transform", `translate(0,${M.t + f.ih})`)
-      .call(d3.axisBottom(x).tickSize(0).tickPadding(10).tickValues(years.filter((_, i) => i % every === 0)))
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(10).tickValues(idx.filter(i => i % every === 0)).tickFormat(i => buckets[i].short))
       .call(g => g.select(".domain").remove());
     places.forEach(p => {
-      const pts = years.map((yr, i) => [x(yr), y(perYear[i][p] || 0)]);
+      const pts = idx.map(i => [x(i), y(per[i][p] || 0)]);
       f.svg.append("path").attr("d", d3.line()(pts)).attr("fill", "none").attr("stroke", color(p)).attr("stroke-width", 2).attr("stroke-linejoin", "round");
-      if (years.length <= 40) f.svg.append("g").selectAll("circle").data(pts).join("circle")
+      if (buckets.length <= 40) f.svg.append("g").selectAll("circle").data(pts).join("circle")
         .attr("cx", d => d[0]).attr("cy", d => d[1]).attr("r", 3).attr("fill", color(p)).attr("stroke", "#fff").attr("stroke-width", 1);
     });
-    hoverLayer(f, years, x, "lineTip", i => places.map(p => ({ k: p, v: perYear[i][p] || 0 })), i => String(years[i]));
+    hoverLayer(f, idx, x, "lineTip", i => places.map(p => ({ k: p, v: per[i][p] || 0 })), i => buckets[i].label);
   }
-
   function drawCum() {
-    const f = frame("cumBox"), [a, b] = range(), places = chosen();
+    const f = frame("cumBox"), [a, b] = range2(), places = chosen();
     const n = Math.min(200, Math.max(2, Math.ceil((b - a) / DAY)));
     const ts = d3.range(n + 1).map(i => a + (b - a) * i / n);
     const vals = ts.map(t => daysBetween(a, t));
     const x = d3.scaleTime().domain([a, b]).range([M.l, M.l + f.iw]);
     const max = d3.max(places, p => vals[vals.length - 1][p] || 0) || 1;
     const y = d3.scaleLinear().domain([0, max]).nice().range([M.t + f.ih, M.t]);
-    yAxis(f, y, "Days");
+    yAxis(f, y);
     f.svg.append("g").attr("class", "axis").attr("transform", `translate(0,${M.t + f.ih})`)
-      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(f.iw / 90))).tickSize(0).tickPadding(10))
-      .call(g => g.select(".domain").remove());
-    places.forEach(p => {
-      f.svg.append("path").attr("d", d3.line()(ts.map((t, i) => [x(t), y(vals[i][p] || 0)])))
-        .attr("fill", "none").attr("stroke", color(p)).attr("stroke-width", 2).attr("stroke-linejoin", "round");
-    });
+      .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor(f.iw / 90))).tickSize(0).tickPadding(10)).call(g => g.select(".domain").remove());
+    places.forEach(p => f.svg.append("path").attr("d", d3.line()(ts.map((t, i) => [x(t), y(vals[i][p] || 0)])))
+      .attr("fill", "none").attr("stroke", color(p)).attr("stroke-width", 2).attr("stroke-linejoin", "round"));
     hoverLayer(f, ts, x, "cumTip", i => places.map(p => ({ k: p, v: vals[i][p] || 0 })),
       i => new Date(ts[i]).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
   }
+  function drawCharts() { drawLine(); drawCum(); }
+
+  /* ---------- centerpoint (computed by the tracker app, see /api/pie/center) ---------- */
+  let map = null, layers = [], trailOn = false, anim = null, animMarker = null, current = null;
+  function setupCenter() {
+    if (!C || !C.ranges || !C.ranges.length) {
+      $("cpInfo").innerHTML = '<p class="cp-note">The centerpoint shows up here after the tracker on my phone publishes it.</p>';
+      return;
+    }
+    $("cpRange").innerHTML = C.ranges.map(r => `<option value="${r.key}">${r.label}</option>`).join("");
+    map = L.map("map", { zoomControl: true, attributionControl: true, scrollWheelZoom: false }).setView([39, -77], 6);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO", subdomains: "abcd", maxZoom: 18
+    }).addTo(map);
+    $("cpRange").addEventListener("change", drawCenter);
+    document.querySelectorAll("[data-trail]").forEach(btn => btn.addEventListener("click", () => {
+      trailOn = btn.dataset.trail === "on";
+      document.querySelectorAll("[data-trail]").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+      drawCenter();
+    }));
+    $("playBtn").addEventListener("click", () => anim ? stopAnim() : startAnim());
+    $("slider").addEventListener("input", () => { stopAnim(); showFrame(Math.round($("slider").value / 1000 * (current.trail.length - 1))); });
+    drawCenter();
+  }
+  const dot = () => L.divIcon({ className: "", html: '<div class="cp-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] });
+  function clearMap() { stopAnim(); layers.forEach(l => map.removeLayer(l)); layers = []; if (animMarker) { map.removeLayer(animMarker); animMarker = null; } }
+
+  // Trail labels follow the tracker's rules: yearly past three years, monthly from three months, otherwise every two days.
+  function trailLabels(r) {
+    const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const totalDays = (r.end - r.start) / DAY, placed = new Set(), out = [];
+    r.trail.forEach(([t, lat, lng], i) => {
+      const d = new Date(t), m = d.getMonth(), day = d.getDate(), y = d.getFullYear();
+      let label = "";
+      if (i === 0) label = totalDays <= 14 ? `${m + 1}/${day}` : totalDays > 365 ? `${MO[m]} '${String(y).slice(2)}` : MO[m];
+      else if (i === r.trail.length - 1) return;
+      else if (totalDays >= 1095) { if (m === 0 && day <= 14 && !placed.has(y)) { label = `'${String(y).slice(2)}`; placed.add(y); } }
+      else if (totalDays >= 92) { const k = y + "-" + m; if (day <= 7 && !placed.has(k) && i > 3) { label = totalDays > 365 ? `${MO[m]} '${String(y).slice(2)}` : MO[m]; placed.add(k); } }
+      else { const k = `${y}-${m}-${Math.floor(day / 2)}`; if (!placed.has(k) && i > 1) { label = `${m + 1}/${day}`; placed.add(k); } }
+      if (label) out.push([lat, lng, label]);
+    });
+    return out;
+  }
+  function drawCenter() {
+    if (!map) return;
+    clearMap();
+    current = C.ranges.find(r => r.key === $("cpRange").value) || C.ranges[0];
+    const r = current;
+    if (trailOn && r.trail.length > 1) {
+      // split where the path jumps across the date line, like the tracker
+      const segs = [[]];
+      r.trail.forEach(([, lat, lng], i) => {
+        if (i && Math.abs(lng - r.trail[i - 1][2]) > 180) segs.push([]);
+        segs[segs.length - 1].push([lat, lng]);
+      });
+      segs.filter(s => s.length > 1).forEach(s => layers.push(L.polyline(s, { color: "#5B5BD6", weight: 2.5, opacity: .85 }).addTo(map)));
+      trailLabels(r).forEach(([lat, lng, label]) => layers.push(L.marker([lat, lng], {
+        icon: L.divIcon({ className: "", html: `<span class="trail-label">${label}</span>`, iconSize: null, iconAnchor: [0, 0] }), interactive: false }).addTo(map)));
+      layers.push(L.marker([r.lat, r.lng], { icon: dot(), zIndexOffset: 1000 }).addTo(map));
+      map.fitBounds(L.latLngBounds(r.trail.map(p => [p[1], p[2]])), { padding: [40, 40] });
+      $("anim").hidden = false; $("slider").value = 1000; $("animWhen").textContent = fmtDate(r.trail[r.trail.length - 1][0]);
+    } else {
+      layers.push(L.marker([r.lat, r.lng], { icon: dot() }).addTo(map));
+      map.setView([r.lat, r.lng], 7);
+      $("anim").hidden = true;
+    }
+    $("cpInfo").innerHTML = `
+      <p class="where">${r.nearestMiles} mi from ${r.nearestCity}</p>
+      <p class="coords">${r.lat.toFixed(2)}°, ${r.lng.toFixed(2)}°</p>
+      <ul class="cp-list">
+        <li><span>From my childhood home</span><b>${fmt(r.milesFromHome)} mi</b></li>
+        <li><span>From where I was born</span><b>${fmt(r.milesFromBirth)} mi</b></li>
+        <li><span>Days counted</span><b>${fmt(r.totalDays)}</b></li>
+        <li><span>Places counted</span><b>${fmt(r.locationCount)}</b></li>
+        ${r.gpsPoints ? `<li><span>GPS points</span><b>${fmt(r.gpsPoints)}</b></li>` : ""}
+      </ul>
+      <p class="cp-note">Worked out by the tracker on my phone, with the same data and math it uses, as of ${new Date(C.computedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.</p>`;
+  }
+  const fmtDate = t => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  function showFrame(i) {
+    const p = current.trail[Math.max(0, Math.min(current.trail.length - 1, i))];
+    if (!animMarker) animMarker = L.marker([p[1], p[2]], { icon: dot(), zIndexOffset: 2000 }).addTo(map);
+    animMarker.setLatLng([p[1], p[2]]);
+    $("slider").value = Math.round(i / (current.trail.length - 1) * 1000);
+    $("animWhen").textContent = fmtDate(p[0]);
+    return i;
+  }
+  function startAnim() {
+    const n = current.trail.length; if (n < 2) return;
+    let i = Math.round($("slider").value / 1000 * (n - 1)); if (i >= n - 1) i = 0;
+    $("playBtn").textContent = "Pause";
+    const step = Math.max(20, Math.floor(15000 / n));   // the whole trail in about 15 seconds, like the tracker
+    anim = setInterval(() => { i++; if (i >= n) { stopAnim(); return; } showFrame(i); map.panTo([current.trail[i][1], current.trail[i][2]], { animate: true, duration: .3 }); }, step);
+  }
+  function stopAnim() { if (anim) { clearInterval(anim); anim = null; } $("playBtn").textContent = "Play"; }
 
   /* ---------- one pie per year of life ---------- */
   const small = d3.arc().innerRadius(0).outerRadius(34);
   $("years").innerHTML = S.years.map(y => {
-    const data = slices(y.days, null);
+    const { list: data } = slices(y.days, null, 10);
     const sum = d3.sum(data, d => d.v);
     const paths = d3.pie().sort(null).value(d => d.v)(data)
       .map(p => `<path d="${small(p)}" fill="${color(p.data.k)}" stroke="#fff" stroke-width="1"></path>`).join("");
-    const title = `Age ${y.age} (${y.year}${y.partial ? ", so far" : ""}): ` +
-      data.slice(0, 4).map(d => `${d.k} ${fmt1(100 * d.v / sum)}%`).join(", ");
+    const title = `Age ${y.age} (${y.year}${y.partial ? ", so far" : ""}): ` + data.slice(0, 4).map(d => `${d.k} ${fmt1(100 * d.v / sum)}%`).join(", ");
     return `<div class="yr" title="${title}"><svg viewBox="-36 -36 72 72" role="img" aria-label="${title}">${paths}</svg>` +
       `<div class="age">${y.age}</div><div class="y">${y.year}${y.partial ? "*" : ""}</div></div>`;
   }).join("");
 
-  /* ---------- wiring ---------- */
-  function drawAll() { drawPie(); drawLine(); drawCum(); }
-  $("range").addEventListener("change", () => {
-    const r = $("range").value;
-    $("yearField").hidden = r !== "year";
-    $("fromField").hidden = $("toField").hidden = r !== "custom";
-    drawAll();
-  });
-  ["year", "from", "to"].forEach(id => $(id).addEventListener("change", drawAll));
-  document.querySelectorAll(".view button").forEach(btn => btn.addEventListener("click", () => {
-    view = btn.dataset.view;
-    document.querySelectorAll(".view button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
-    drawPie();
-  }));
   let lastW = window.innerWidth, rz;
-  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; drawLine(); drawCum(); } }, 150); });
-  drawChips();
-  drawAll();
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (window.innerWidth !== lastW) { lastW = window.innerWidth; drawCharts(); if (map) map.invalidateSize(); } }, 150); });
+  drawPie(); drawCharts(); setupCenter();
 })();
 </script>
 </body>

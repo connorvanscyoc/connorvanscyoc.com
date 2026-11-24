@@ -2,7 +2,7 @@
 // Cache name bumped from v3 to v4 - this forces the activate handler to
 // delete the old cache, which forces a fresh fetch of index.html (and
 // therefore pickup of the new v59 app code: CARTO map API key).
-const CACHE_NAME = 'pie-chart-of-life-v5';  // v5: moved to connorvanscyoc.com/tracker
+const CACHE_NAME = 'pie-chart-of-life-v6';  // v5: moved to connorvanscyoc.com/tracker; v6: publishes the public centerpoint
 const urlsToCache = [
     './',
     './index.html',

@@ -8,6 +8,8 @@
      GET  anyone: totals from the Pie Chart of Life tracker (see pie.js)
    /api/pie/timeline
      GET  anyone: dates and places of each arrival, for the charts (no notes, no coordinates)
+   /api/pie/center (GET, anyone) and /api/tracker/center (PUT, owner key)
+     centerpoint and trail per time range, computed by the tracker app (see center() below)
    /api/tracker/script, /api/tracker/gps
      the tracker app's own requests, owner key required (see tracker() below)
    The log lives in the BANANAS key-value store. Before the first change each day,
@@ -80,6 +82,29 @@ async function bananas(req, env) {
 }
 
 
+
+/* Centerpoint results, worked out by the tracker app itself (it has the raw data and the math)
+   and sent here after it loads. PUT needs the owner key; anyone can GET. */
+async function center(req, env) {
+  if (!env.BANANAS) return json({ error: "Not connected yet." }, 503);
+  if (req.method === "GET") {
+    const raw = await env.BANANAS.get("pie:center");
+    return raw ? new Response(raw, { headers: { "content-type": "application/json", "cache-control": "no-store", ...CORS } })
+               : json({ error: "No centerpoint yet. Open the tracker once to publish it." }, 404);
+  }
+  if (req.method === "PUT") {
+    const auth = req.headers.get("authorization") || "";
+    if (!env.BANANA_KEY || auth !== "Bearer " + env.BANANA_KEY) return json({ error: "Wrong key." }, 401);
+    const text = await req.text();
+    if (text.length > 5 * 1024 * 1024) return json({ error: "Too big." }, 413);
+    let body; try { body = JSON.parse(text); } catch { return json({ error: "Not JSON." }, 400); }
+    if (!body || !Array.isArray(body.ranges) || !body.ranges.length) return json({ error: "No ranges." }, 400);
+    await env.BANANAS.put("pie:center", text);
+    return json({ ok: true, ranges: body.ranges.length });
+  }
+  return json({ error: "Method not allowed." }, 405);
+}
+
 /* /api/tracker/script and /api/tracker/gps: the tracker app's two Apps Script addresses,
    kept as secrets (PIE_SCRIPT_URL, TRACKER_GPS_URL). Owner key required. Method, query
    string and body pass through untouched, so the app behaves exactly as it did before. */
@@ -104,7 +129,8 @@ async function tracker(req, env, which) {
   if (which === "script" && (req.method === "POST" || target.searchParams.has("action")) && env.BANANAS) {
     await env.BANANAS.delete(PIE_CACHE_KEY);
   }
-  return new Response(await res.text(), {
+  // Stream the reply straight through (the GPS log is large; no need to hold it in memory).
+  return new Response(res.body, {
     status: res.status,
     headers: { "content-type": res.headers.get("content-type") || "application/json", "cache-control": "no-store" },
   });
@@ -116,6 +142,7 @@ export default {
     if (url.pathname === "/api/bananas") return bananas(req, env);
     if (url.pathname === "/api/pie") return pie(req, env, json, "summary");
     if (url.pathname === "/api/pie/timeline") return pie(req, env, json, "timeline");
+    if (url.pathname === "/api/pie/center" || url.pathname === "/api/tracker/center") return center(req, env);
     if (url.pathname === "/api/tracker/script") return tracker(req, env, "script");
     if (url.pathname === "/api/tracker/gps") return tracker(req, env, "gps");
     return env.ASSETS.fetch(req);
