@@ -6,12 +6,14 @@
      PUT  Connor's phone only (Authorization: Bearer <BANANA_KEY>): replace the log
    /api/pie
      GET  anyone: totals from the Pie Chart of Life tracker (see pie.js)
+   /api/pie/timeline
+     GET  anyone: dates and places of each arrival, for the charts (no notes, no coordinates)
    /api/tracker/script, /api/tracker/gps
      the tracker app's own requests, owner key required (see tracker() below)
    The log lives in the BANANAS key-value store. Before the first change each day,
    the previous log is copied to backup:YYYY-MM-DD and kept for 120 days. */
 
-import { pie } from "./pie.js";
+import { pie, PIE_CACHE_KEY } from "./pie.js";
 
 const TYPES = new Set(["eat", "away", "buy", "open", "count"]);
 const CORS = {
@@ -100,7 +102,7 @@ async function tracker(req, env, which) {
   const res = await fetch(target.toString(), init);
   // A new entry or an edit changes the pie; let the public totals refresh right away.
   if (which === "script" && (req.method === "POST" || target.searchParams.has("action")) && env.BANANAS) {
-    await env.BANANAS.delete("pie:summary");
+    await env.BANANAS.delete(PIE_CACHE_KEY);
   }
   return new Response(await res.text(), {
     status: res.status,
@@ -112,7 +114,8 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === "/api/bananas") return bananas(req, env);
-    if (url.pathname === "/api/pie") return pie(req, env, json);
+    if (url.pathname === "/api/pie") return pie(req, env, json, "summary");
+    if (url.pathname === "/api/pie/timeline") return pie(req, env, json, "timeline");
     if (url.pathname === "/api/tracker/script") return tracker(req, env, "script");
     if (url.pathname === "/api/tracker/gps") return tracker(req, env, "gps");
     return env.ASSETS.fetch(req);

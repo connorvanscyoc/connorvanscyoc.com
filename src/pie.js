@@ -8,7 +8,7 @@
    Privacy: only totals leave here, never individual entries or a current location. */
 
 const LAG_DAYS = 0;   // Connor's call: totals can be fully up to date
-const CACHE_KEY = "pie:summary";
+const CACHE_KEY = "pie:data";
 const CACHE_MS = 10 * 60 * 1000;          // re-read the sheet at most every 10 minutes
 const BIRTH = Date.parse("1996-11-04T07:31:00-05:00");
 const DAY = 86400000;
@@ -89,21 +89,46 @@ async function readSheet(env) {
   return body.data;
 }
 
-export async function pie(req, env, json) {
-  if (req.method !== "GET") return json({ error: "Method not allowed." }, 405);
-  if (!env.PIE_SCRIPT_URL || !env.BANANAS) return json({ error: "Not connected yet." }, 503);
+/* The public timeline: when Connor arrived in each place, and nothing else
+   (no trip descriptions, no coordinates). Places are listed once and
+   referenced by index to keep it small. */
+function timelineOf(rows, summary) {
+  const entries = rows
+    .map((r) => ({ t: Date.parse(r.timestamp), loc: clean(r.location) }))
+    .filter((e) => Number.isFinite(e.t) && e.loc)
+    .sort((a, b) => a.t - b.t);
+  const places = summary.order.slice();
+  for (const e of entries) if (!places.includes(e.loc)) places.push(e.loc);
+  const index = Object.fromEntries(places.map((p, i) => [p, i]));
+  return { places, colors: summary.colors, born: summary.born, entries: entries.map((e) => [e.t, index[e.loc]]) };
+}
 
+async function load(env) {
   const cached = await env.BANANAS.get(CACHE_KEY, "json");
-  if (cached && Date.now() - cached.fetchedAt < CACHE_MS) return json(cached.summary);
-
+  if (cached && cached.timeline && Date.now() - cached.fetchedAt < CACHE_MS) return cached;
   try {
-    const summary = summarize(await readSheet(env));
+    const rows = await readSheet(env);
+    const summary = summarize(rows);
     if (!summary) throw new Error("no entries");
-    await env.BANANAS.put(CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), summary }));
-    return json(summary);
+    const fresh = { fetchedAt: Date.now(), summary, timeline: timelineOf(rows, summary) };
+    await env.BANANAS.put(CACHE_KEY, JSON.stringify(fresh));
+    return fresh;
   } catch (err) {
     // The sheet can be slow or briefly unavailable; an older copy is better than nothing.
-    if (cached) return json(cached.summary);
+    if (cached && cached.timeline) return cached;
+    throw err;
+  }
+}
+
+export async function pie(req, env, json, what) {
+  if (req.method !== "GET") return json({ error: "Method not allowed." }, 405);
+  if (!env.PIE_SCRIPT_URL || !env.BANANAS) return json({ error: "Not connected yet." }, 503);
+  try {
+    const data = await load(env);
+    return json(what === "timeline" ? data.timeline : data.summary);
+  } catch (err) {
     return json({ error: "Couldn't read the tracker right now." }, 502);
   }
 }
+
+export const PIE_CACHE_KEY = CACHE_KEY;
