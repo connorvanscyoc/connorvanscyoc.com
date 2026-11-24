@@ -249,6 +249,16 @@ h1,h2,h3{margin:0;}
   .scrim{align-items:center;}
   .sheet{max-width:460px;border-radius:22px;border:1px solid var(--line-strong);}
 }
+
+.ma-toggle{display:inline-flex;align-items:center;gap:8px;margin:0 0 10px;padding:7px 12px;border-radius:10px;
+  border:1px solid var(--line-strong);font-size:13px;color:var(--cocoa-2);}
+.ma-toggle.on{background:var(--paper-2);border-color:var(--cocoa);color:var(--cocoa);font-weight:700;}
+.ma-swatch{display:inline-block;width:18px;border-top:2.5px solid var(--cocoa);border-radius:2px;}
+@media (min-width:900px){
+  .rec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;padding:20px 0 28px;border-bottom:1px solid var(--line);}
+  .rec-h{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:12px;}
+  .rec-stack{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
@@ -424,6 +434,7 @@ var range = "day";
 var dayRange = (function () { try { return localStorage.getItem("banana-dayrange") || "30"; } catch (e) { return "30"; } })();
 /* Desktop gets its own layout and taller charts; phones keep the original. */
 function wide() { return window.matchMedia("(min-width: 900px)").matches; }
+var showMA = (function () { try { return localStorage.getItem("banana-ma") === "1"; } catch (e) { return false; } })();
 var logDate = null;      // null = the current banana day
 var sheet = null;        // "custom" | "data"
 var undoEv = null;
@@ -760,7 +771,7 @@ function barChart(box, data, opts) {
   var tk = ticksFor(max);
   var g = axes(f, m, tk.top, tk.step);
   var slot = g.iw / Math.max(1, data.length);
-  var bw = Math.min(opts.barW, slot * 0.72);
+  var bw = Math.min(opts.maxBar || 96, slot * 0.8);
   var base = m.t + g.ih;
   var labels = [];
 
@@ -802,6 +813,23 @@ function barChart(box, data, opts) {
         esc(opts.unit || "bananas") + "</div>";
     hover(f, hit, html, cx, y);
   });
+
+  if (opts.line) {
+    var segs = [], cur = [];
+    data.forEach(function (d, i) {
+      if (d.ma == null) { if (cur.length) segs.push(cur); cur = []; return; }
+      cur.push([m.l + slot * (i + 0.5), base - (d.ma / tk.top) * g.ih]);
+    });
+    if (cur.length) segs.push(cur);
+    segs.forEach(function (seg) {
+      if (seg.length < 2) return;
+      var dd = "M " + seg.map(function (q) { return q[0] + " " + q[1]; }).join(" L ");
+      f.svg.appendChild(el("path", { d: dd, fill: "none", stroke: "var(--paper)", "stroke-width": 6,
+        "stroke-linejoin": "round", "stroke-linecap": "round", "pointer-events": "none" }));
+      f.svg.appendChild(el("path", { d: dd, fill: "none", stroke: "var(--cocoa)", "stroke-width": 2.5,
+        "stroke-linejoin": "round", "stroke-linecap": "round", "pointer-events": "none" }));
+    });
+  }
 
   labels.forEach(function (l) {
     haloText(f.svg, {
@@ -1194,6 +1222,14 @@ function viewLog(S) {
   return h + "</div></div>";
 }
 
+function tickerHTML(S) {
+  return '<div class="ticker"><span><b>' + S.inventory + "</b> in the house</span>" +
+    '<span class="ticker-sep"></span><span><b>' + S.today + "</b> eaten today</span>" +
+    '<span class="ticker-sep"></span><span><b>' + S.eaten + "</b> eaten since " +
+    (S.days.length ? esc(shortDate(S.days[0].date)) : "today") + "</span>" +
+    '<span class="sync" id="sync">' + esc(syncText()) + "</span></div>";
+}
+
 function spanText(list) {
   var a = list[0].date, b = list[list.length - 1].date;
   if (list.length === 1) return shortDate(a);
@@ -1210,7 +1246,7 @@ function viewTrends(S) {
         card("All time", round(S.avgAll, 1), "since " + shortDate(S.days[0].date)) +
       "</ul>"
     : '<p class="foot">Averages start tomorrow, once today is a full day.</p>';
-  var h = section("Daily average", "full days only", avgs);
+  var h = (wide() ? tickerHTML(S) : "") + section("Daily average", "full days only", avgs);
 
   var note = range === "day" ? (dayRange === "all" ? "every day so far" : "last " + dayRange + " days")
     : range === "week" ? "by week, Monday start"
@@ -1225,7 +1261,9 @@ function viewTrends(S) {
       .map(function (p) {
         return '<button class="seg-b' + (dayRange === p[0] ? " seg-on" : "") +
           '" data-act="dayrange" data-v="' + p[0] + '">' + p[1] + "</button>";
-      }).join("") + "</div>";
+      }).join("") + "</div>" +
+      '<button class="ma-toggle' + (showMA ? " on" : "") + '" data-act="ma" aria-pressed="' + showMA + '">' +
+      '<span class="ma-swatch" aria-hidden="true"></span>7-day average</button>';
   }
   h += section("Bananas eaten", note, seg + '<div class="chart" id="chart-eaten"></div>');
 
@@ -1242,33 +1280,39 @@ function viewRecords(S) {
     (canEdit ? section("Your data", "saved to connorvanscyoc.com",
       '<button class="ghost" data-act="sheet" data-v="data">Export or import entries</button>') : "");
 
-  var bests = '<ul class="gcards gcards-3">' +
-    card("Most in a day", S.bestDay && S.bestDay.n, S.bestDay && niceDate(S.bestDay.date)) +
-    card("Most in a week", S.bestWeek && S.bestWeek.n, S.bestWeek && "week of " + S.bestWeek.label) +
-    card("Most in a month", S.bestMonth && S.bestMonth.n, S.bestMonth && S.bestMonth.label) +
-    "</ul>" +
-    '<ul class="gcards gcards-gap">' +
-    card("Biggest haul", S.biggestHaul && S.biggestHaul.n,
-         S.biggestHaul && niceDate(new Date(S.biggestHaul.ts))) +
-    card("Fullest house", S.peakInv, S.peakTs && niceDate(new Date(S.peakTs))) +
-    "</ul>";
+  var cDay = card("Most in a day", S.bestDay && S.bestDay.n, S.bestDay && niceDate(S.bestDay.date));
+  var cWeek = card("Most in a week", S.bestWeek && S.bestWeek.n, S.bestWeek && "week of " + S.bestWeek.label);
+  var cMonth = card("Most in a month", S.bestMonth && S.bestMonth.n, S.bestMonth && S.bestMonth.label);
+  var cHaul = card("Biggest haul", S.biggestHaul && S.biggestHaul.n, S.biggestHaul && niceDate(new Date(S.biggestHaul.ts)));
+  var cFull = card("Fullest house", S.peakInv, S.peakTs && niceDate(new Date(S.peakTs)));
+  var cEaten = card("Bananas eaten", S.eaten, "since " + (S.days.length ? shortDate(S.days[0].date) : "today"));
+  var cAvg = card("Average per day", round(S.avgAll, 1),
+    "over " + S.daysTracked + " full " + (S.daysTracked === 1 ? "day" : "days"));
+  var data = canEdit
+    ? section("Your data", "saved to connorvanscyoc.com",
+        '<button class="ghost" data-act="sheet" data-v="data">Export or import entries</button>')
+    : section("Data", "",
+        '<button class="ghost" data-act="sheet" data-v="data">Export entries</button> ' +
+        '<button class="ghost" data-act="sheet" data-v="connect">I\u2019m Connor</button>');
+  var wdChart = S.days.length ? section("Best day for each weekday", "", '<div class="chart" id="chart-wdbest"></div>') : "";
 
-  var life = '<ul class="gcards">' +
-    card("Bananas eaten", S.eaten, "since " + (S.days.length ? shortDate(S.days[0].date) : "today")) +
-    card("Average per day", round(S.avgAll, 1),
-         "over " + S.daysTracked + " full " + (S.daysTracked === 1 ? "day" : "days")) +
-    "</ul>";
+  if (wide()) {
+    var col = function (title, cards) {
+      return '<div class="rec-col"><h2 class="rec-h">' + esc(title) + '</h2><ul class="gcards rec-stack">' + cards + "</ul></div>";
+    };
+    return '<div class="rec-grid">' +
+      col("Personal bests", cDay + cWeek + cMonth) +
+      col("The house", cHaul + cFull) +
+      col("Lifetime", cEaten + cAvg) +
+      "</div>" + wdChart + data;
+  }
 
-  return section("Personal bests", "", bests) +
-    '<div class="duo">' +
-    (S.days.length ? section("Best day for each weekday", "", '<div class="chart" id="chart-wdbest"></div>') : "") +
-    section("Lifetime", "", life) + "</div>" +
-    (canEdit
-      ? section("Your data", "saved to connorvanscyoc.com",
-          '<button class="ghost" data-act="sheet" data-v="data">Export or import entries</button>')
-      : section("Data", "",
-          '<button class="ghost" data-act="sheet" data-v="data">Export entries</button> ' +
-          '<button class="ghost" data-act="sheet" data-v="connect">I\u2019m Connor</button>'));
+  return section("Personal bests", "",
+      '<ul class="gcards gcards-3">' + cDay + cWeek + cMonth + "</ul>" +
+      '<ul class="gcards gcards-gap">' + cHaul + cFull + "</ul>") +
+    wdChart +
+    section("Lifetime", "", '<ul class="gcards">' + cEaten + cAvg + "</ul>") +
+    data;
 }
 
 function viewSheet(S) {
@@ -1320,6 +1364,7 @@ function viewSheet(S) {
 /* ================================================================ */
 
 function render() {
+  if (wide() && tab === "log") tab = "trends";
   var S = computeStats();
   var body = tab === "log" ? viewLog(S)
     : tab === "trends" ? viewTrends(S)
@@ -1334,7 +1379,7 @@ function render() {
   }
 
   var tabs = '<nav class="tabs"><a class="brand" href="/">Banana Counter</a>' +
-    [["log","Log"],["trends","Trends"],["records","Records"]].map(function (p) {
+    (wide() ? [["trends","Trends"],["records","Records"]] : [["log","Log"],["trends","Trends"],["records","Records"]]).map(function (p) {
       return '<button class="tab' + (tab === p[0] ? " tab-on" : "") +
         '" data-act="tab" data-v="' + p[0] + '">' + p[1] + "</button>";
     }).join("") + "</nav>";
@@ -1352,10 +1397,24 @@ function render() {
   }
 }
 
+/* Daily bars for the chosen range. Each full day also carries the average of
+   it and the six days before it; today is still in progress, so it gets none. */
+function dayRows(S) {
+  var all = S.daysLive, vals = all.map(function (d) { return d.n; });
+  var shown = dayRange === "all" ? all.length : Math.min(all.length, Number(dayRange));
+  var start = all.length - shown;
+  return all.slice(start).map(function (d, k) {
+    var i = start + k, ma = null;
+    if (i >= 6 && i < all.length - 1) {
+      ma = vals.slice(i - 6, i + 1).reduce(function (a, b) { return a + b; }, 0) / 7;
+    }
+    return { label: shortDate(d.date), n: d.n, ma: ma };
+  });
+}
+
 function drawTrends(S) {
   var cfg = range === "day"
-      ? { rows: (dayRange === "all" ? S.daysLive : S.daysLive.slice(-Number(dayRange))).map(function (d) { return { label: shortDate(d.date), n: d.n }; }),
-          cap: 16, live: "Today" }
+      ? { rows: dayRows(S), cap: 16, live: "Today" }
     : range === "week"
       ? { rows: S.liveWeeks.slice(-16).map(function (w) { return { label: w.label, n: w.n }; }),
           cap: 22, live: "This week" }
@@ -1366,20 +1425,22 @@ function drawTrends(S) {
           cap: 42, live: "This year" };
 
   barChart(document.getElementById("chart-eaten"), cfg.rows, {
-    height: wide() ? 280 : 210, barW: cfg.cap, liveLast: true, lastLabel: cfg.live,
+    height: wide() ? 420 : 210, barW: cfg.cap, liveLast: true, lastLabel: cfg.live,
+    line: range === "day" && showMA,
     tip: function (d, live) {
       var title = live ? cfg.live : (range === "week" ? "Week of " + d.label : d.label);
       return '<div class="d">' + esc(title) + "</div><div><b>" + d.n + "</b> " +
-        (live ? "so far" : (d.n === 1 ? "banana" : "bananas")) + "</div>";
+        (live ? "so far" : (d.n === 1 ? "banana" : "bananas")) + "</div>" +
+        (range === "day" && showMA && d.ma != null ? "<div>7-day average <b>" + round(d.ma, 1) + "</b></div>" : "");
     }
   });
 
-  stepChart(document.getElementById("chart-house"), S.invPts, S.dayTicks, wide() ? 240 : 210);
+  stepChart(document.getElementById("chart-house"), S.invPts, S.dayTicks, wide() ? 360 : 210);
 
   if (S.days.length) {
     lineChart(document.getElementById("chart-week"), S.weekday.map(function (w) {
       return { label: w.label, long: w.long, n: w.avg, count: w.count };
-    }), { height: wide() ? 240 : 200 });
+    }), { height: wide() ? 360 : 200 });
   }
 }
 
@@ -1391,7 +1452,7 @@ function drawRecords(S) {
     return { label: w.label, long: w.long, n: has ? w.best.n : 0,
              sub: has ? shortDate(w.best.date) : "\u2014", date: has ? w.best.date : null };
   }), {
-    height: wide() ? 240 : 214, barW: 28, allLabels: true, valueLabels: true,
+    height: wide() ? 360 : 214, barW: 28, allLabels: true, valueLabels: true,
     colorFor: function (d) { return d.n === top && top > 0 ? "var(--cocoa)" : "var(--tan)"; },
     tip: function (d) {
       return d.date
@@ -1426,6 +1487,10 @@ document.addEventListener("click", function (ev) {
     }
     case "tab":
       tab = t.getAttribute("data-v"); render(); window.scrollTo(0, 0); break;
+    case "ma":
+      showMA = !showMA;
+      try { localStorage.setItem("banana-ma", showMA ? "1" : "0"); } catch (e) {}
+      render(); break;
     case "dayrange":
       dayRange = t.getAttribute("data-v");
       try { localStorage.setItem("banana-dayrange", dayRange); } catch (e) {}
