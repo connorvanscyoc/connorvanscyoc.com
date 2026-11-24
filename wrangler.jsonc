@@ -1,0 +1,9 @@
+// Cloudflare settings: serve everything in public/ as the website.
+// "name" must match the Worker's name in the Cloudflare dashboard.
+{
+  "name": "jolly-river-ef4d",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public"
+  }
+}

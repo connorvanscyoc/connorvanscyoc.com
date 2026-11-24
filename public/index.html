@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connor Van Scyoc: things I've counted, mapped or drawn</title>
+<meta name="description" content="Maps, counts and charts about one life, most of them still running.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Marker colors, taken from Connor's drawings */
+    --ink: #141414;
+    --blue: #2456B8;
+    --red: #D8352C;
+    --orange: #F07B2B;
+    --yellow: #F3C620;
+    --teal: #4FA6DB;
+    --green: #1F7A48;
+    --purple: #4A2F86;
+    --paper: #FFFFFF;
+    --rule: #E3E3E0;
+    --muted: #5C5C58;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+    font-feature-settings: "tnum" 1;
+  }
+  a { color: var(--blue); text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+  a:hover { text-decoration-thickness: 3px; }
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
+
+  /* ---------- Hero: a new drawing every day ---------- */
+  .terrain {
+    position: relative;
+    height: min(82vh, 760px);
+    min-height: 480px;
+    overflow: hidden;
+  }
+  .terrain canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .terrain-label {
+    position: absolute;
+    left: clamp(20px, 5vw, 64px);
+    bottom: clamp(28px, 6vh, 64px);
+    max-width: calc(100% - 2 * clamp(20px, 5vw, 64px));
+  }
+  .name {
+    margin: 0;
+    font-variation-settings: "wdth" 125;
+    font-weight: 850;
+    font-size: clamp(38px, 6.6vw, 94px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    max-width: 12ch;
+  }
+  .tagline {
+    margin: 16px 0 0;
+    max-width: 30ch;
+    font-size: clamp(18px, 2vw, 22px);
+    line-height: 1.35;
+  }
+  .redraw {
+    position: absolute;
+    top: 18px;
+    right: clamp(20px, 5vw, 64px);
+    display: flex; align-items: center; gap: 12px;
+    font: inherit; font-size: 14px;
+    color: var(--ink);
+    background: none; border: 0; padding: 6px 2px; cursor: pointer;
+  }
+  .redraw strong {
+    font-weight: 650;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    padding: 5px 14px;
+  }
+  .redraw:hover strong { background: var(--ink); color: var(--paper); }
+  .redraw .when { color: var(--muted); }
+
+  /* ---------- Layout ---------- */
+  main {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 clamp(20px, 5vw, 64px);
+  }
+  .group { padding: 80px 0 0; }
+  .group-head { margin-bottom: 26px; }
+  .group-head h2 {
+    margin: 0;
+    font-variation-settings: "wdth" 125;
+    font-weight: 800;
+    font-size: clamp(28px, 3.6vw, 40px);
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .group-head p { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+  .squiggle { display: block; width: 120px; height: 14px; margin: 12px 0 0; }
+
+  /* ---------- Still running ---------- */
+  .legend { list-style: none; margin: 0; padding: 0; }
+  .entry {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 4px 22px;
+    align-items: start;
+    padding: 24px 0;
+    border-top: 2px solid var(--ink);
+  }
+  .entry:last-child { border-bottom: 2px solid var(--ink); }
+  .symbol { width: 48px; height: 48px; }
+  .symbol svg { width: 100%; height: 100%; display: block; overflow: visible; }
+  .entry h3 { margin: 0; font-weight: 700; font-size: 22px; line-height: 1.2; }
+  .entry h3 a, .index h3 a { color: inherit; text-decoration: none; }
+  .entry h3 a:hover, .index h3 a:hover { text-decoration: underline; text-decoration-color: var(--blue); }
+  .entry p { margin: 4px 0 0; max-width: 58ch; }
+  .reading { text-align: right; min-width: 9ch; }
+  .reading .value {
+    display: block;
+    font-variation-settings: "wdth" 70;
+    font-weight: 800;
+    font-size: 42px;
+    line-height: 1;
+  }
+  .reading .unit { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+  .reading.pending .value { font-size: 30px; color: #C9C9C4; }
+
+  /* ---------- Finished pieces ---------- */
+  .index { list-style: none; margin: 0; padding: 0; columns: 2 420px; column-gap: 56px; }
+  .index li {
+    break-inside: avoid;
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 2px 16px;
+    padding: 16px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .index .symbol { width: 32px; height: 32px; }
+  .index h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.25; }
+  .index p { margin: 2px 0 0; font-size: 15px; color: var(--muted); }
+  .index .year { font-size: 15px; color: var(--muted); }
+
+  /* ---------- In the works ---------- */
+  .works { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 56px; }
+  .work { padding: 18px 0; border-top: 2px dashed var(--ink); }
+  .work h3 { margin: 0; font-size: 18px; font-weight: 700; }
+  .work p { margin: 4px 0 0; font-size: 15px; color: var(--muted); max-width: 46ch; }
+
+  footer {
+    max-width: 1120px;
+    margin: 96px auto 0;
+    padding: 32px clamp(20px, 5vw, 64px) 48px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 40px; align-items: end;
+    font-size: 15px; color: var(--muted);
+  }
+  footer p { margin: 0 0 8px; max-width: 56ch; }
+  #blob { width: 200px; height: 180px; display: block; }
+
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .entry { grid-template-columns: 36px minmax(0, 1fr); }
+    .symbol { width: 34px; height: 34px; }
+    .reading { grid-column: 2; text-align: left; margin-top: 10px; }
+    .reading .value { font-size: 32px; display: inline; }
+    .reading .unit { display: inline; margin-left: 8px; }
+    .redraw .when { display: none; }
+    footer { grid-template-columns: 1fr; }
+    #blob { width: 150px; height: 135px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="terrain" aria-label="Introduction">
+  <canvas id="terrain" aria-hidden="true"></canvas>
+  <button class="redraw" id="redraw" type="button"><span class="when" id="when">Today's drawing</span><strong>Draw a new one</strong></button>
+  <div class="terrain-label" id="label">
+    <h1 class="name">Things I've counted, mapped or drawn.</h1>
+    <p class="tagline">A running record of one life, by Connor&nbsp;Van&nbsp;Scyoc.</p>
+  </div>
+</header>
+
+<main>
+  <section class="group" aria-labelledby="living-h">
+    <div class="group-head">
+      <h2 id="living-h">Still running</h2>
+      <p>These update on their own as I go about my life.</p>
+    </div>
+    <ul class="legend" id="living-list"></ul>
+  </section>
+
+  <section class="group" aria-labelledby="finished-h">
+    <div class="group-head">
+      <h2 id="finished-h">Finished pieces</h2>
+      <p>One-off projects, done and dusted.</p>
+    </div>
+    <ul class="index" id="finished-list"></ul>
+  </section>
+
+  <section class="group" aria-labelledby="works-h">
+    <div class="group-head">
+      <h2 id="works-h">In the works</h2>
+      <p>Half-built things and ideas I keep coming back to.</p>
+    </div>
+    <div class="works" id="works-list"></div>
+  </section>
+</main>
+
+<footer>
+  <div>
+    <p>I'm Connor. I live in Adams Morgan, DC, and I make maps and charts out of my own life, and sometimes out of other things.</p>
+    <p>The drawing at the top is redrawn every day in the style of my doodles.</p>
+  </div>
+  <canvas id="blob" aria-hidden="true"></canvas>
+</footer>
+
+<script>
+/* =========================================================
+   PROJECTS — edit this list to add, remove or reorder work.
+   `live` is the key the page looks for in data/live.json.
+   `href: null` shows the title without a link.
+   ========================================================= */
+const PROJECTS = {
+  living: [
+    { symbol: "banana", title: "Banana counter",
+      text: "Every banana I eat, logged with one tap on my phone.",
+      live: "bananas", unit: "bananas this year", href: null },
+    { symbol: "county", title: "Lifetime county map",
+      text: "Every U.S. county I've been to, and the ones I've spent the night in.",
+      live: "counties", unit: "counties visited", href: "counties/" },
+    { symbol: "track", title: "Lifetime heatmaps",
+      text: "Every hike, walk, run and ride from Strava and Nike Run Club, stacked on one map.",
+      live: "miles", unit: "miles on foot and bike", href: null },
+    { symbol: "pie", title: "Pie chart of life",
+      text: "Where I've slept every night of my life, plus 30 years told as Instagram stories.",
+      live: "nights", unit: "nights mapped", href: "https://claude.ai/artifact/Vu5DkU8gemkgoWy37YMVyb" },
+    { symbol: "town", title: "Every town in America",
+      text: "An interactive map of every town in the country.",
+      live: "towns", unit: "towns", href: "https://claude.ai/artifact/RaRVQqNGPzFUYX8cdqGLCz" }
+  ],
+  finished: [
+    { symbol: "bike",   title: "BOB by the numbers", year: "2026",
+      text: "A season of data from my bike club, with an attendance card for every rider." },
+    { symbol: "bird",   title: "The Lifer Race", year: "2026",
+      text: "Me, Alex and Katie racing to see new bird species.",
+      href: "https://claude.ai/artifact/UXn6N9J26NzgnFtwQnF7XL" },
+    { symbol: "street", title: "DC place-name streets", year: "2026",
+      text: "The streets of DC that are named after other places.",
+      href: "https://claude.ai/artifact/VYdpZWeBrNKsPNvo3SgqcV" },
+    { symbol: "leaf",   title: "Leaf studio", year: "2026",
+      text: "Pressed Bradford pear leaves, scanned into a digital collection.",
+      href: "https://claude.ai/artifact/M3RG8Q6oehf8E9UPd9rK67" }
+  ],
+  works: [
+    { title: "Party data", text: "What the numbers say about the parties I throw." },
+    { title: "More maps", text: "A running list of maps I want to make and haven't yet." }
+  ]
+};
+
+/* Symbols in the doodle style: thick black outlines, flat marker fills.
+   Each one is a stand-in until Connor draws his own. */
+const K = 'stroke="#141414" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
+const SYMBOLS = {
+  banana: `<path d="M8 34 C 14 14, 30 6, 40 8 C 32 14, 26 24, 34 38 C 24 42, 12 40, 8 34 Z" fill="var(--yellow)" ${K}/><path d="M38 8 l3 -3" fill="none" ${K}/>`,
+  county: `<rect x="6" y="8" width="16" height="14" fill="var(--orange)" ${K}/><rect x="22" y="8" width="18" height="14" fill="#fff" ${K}/><rect x="6" y="22" width="20" height="18" fill="#fff" ${K}/><rect x="26" y="22" width="14" height="18" fill="var(--blue)" ${K}/>`,
+  track:  `<path d="M5 36 C 12 10, 22 40, 28 20 S 40 8, 43 14" fill="none" stroke="var(--red)" stroke-width="6" stroke-linecap="round"/><path d="M5 44 C 14 26, 24 46, 34 30" fill="none" stroke="var(--orange)" stroke-width="6" stroke-linecap="round"/>`,
+  pie:    `<circle cx="24" cy="24" r="18" fill="var(--teal)" ${K}/><path d="M24 24 L24 6 A18 18 0 0 1 41 30 Z" fill="var(--yellow)" ${K}/><path d="M24 24 L41 30 A18 18 0 0 1 14 39 Z" fill="var(--purple)" ${K}/>`,
+  town:   `<circle cx="24" cy="24" r="17" fill="none" stroke="var(--blue)" stroke-width="5"/><circle cx="24" cy="24" r="9" fill="none" stroke="var(--yellow)" stroke-width="5"/><circle cx="24" cy="24" r="3.5" fill="none" stroke="#141414" stroke-width="2.6"/>`,
+  bike:   `<circle cx="12" cy="30" r="8" fill="var(--teal)" ${K}/><circle cx="36" cy="30" r="8" fill="var(--orange)" ${K}/><path d="M12 30 L21 16 L31 16 L36 30 M21 16 L24 30 L31 16" fill="none" ${K}/>`,
+  bird:   `<path d="M5 26 Q 15 12, 24 25 Q 33 12, 43 26" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round"/>`,
+  street: `<path d="M5 15 H43" stroke="var(--red)" stroke-width="5" stroke-linecap="round"/><path d="M5 24 H43" stroke="var(--yellow)" stroke-width="5" stroke-linecap="round" stroke-dasharray="7 7"/><path d="M5 33 H43" stroke="var(--blue)" stroke-width="5" stroke-linecap="round"/>`,
+  leaf:   `<path d="M8 40 C 8 20, 20 8, 42 8 C 42 28, 28 40, 8 40 Z" fill="var(--green)" ${K}/><path d="M8 40 L 30 18" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>`
+};
+const svg = (n) => `<svg viewBox="0 0 48 48" aria-hidden="true">${SYMBOLS[n] || ""}</svg>`;
+const titleHTML = (p) => p.href ? `<a href="${p.href}">${p.title}</a>` : p.title;
+
+function render(live) {
+  document.getElementById("living-list").innerHTML = PROJECTS.living.map(p => {
+    const v = live && live[p.live];
+    const has = v !== undefined && v !== null;
+    return `<li class="entry">
+      <div class="symbol">${svg(p.symbol)}</div>
+      <div><h3>${titleHTML(p)}</h3><p>${p.text}</p></div>
+      <div class="reading ${has ? "" : "pending"}">
+        <span class="value">${has ? Number(v).toLocaleString() : "—"}</span>
+        <span class="unit">${has ? p.unit : "not connected yet"}</span>
+      </div>
+    </li>`;
+  }).join("");
+  document.getElementById("finished-list").innerHTML = PROJECTS.finished.map(p => `
+    <li><div class="symbol">${svg(p.symbol)}</div>
+      <div><h3>${titleHTML(p)}</h3><p>${p.text}</p></div>
+      <span class="year">${p.year}</span></li>`).join("");
+  document.getElementById("works-list").innerHTML = PROJECTS.works.map(p => `
+    <div class="work"><h3>${p.title}</h3><p>${p.text}</p></div>`).join("");
+}
+/* Live numbers. Each source fills in its own value as it arrives. */
+const LIVE = {};
+render(LIVE);
+const update = (key, value) => { LIVE[key] = value; render(LIVE); };
+
+// Counties: read straight from the mapchart.net save files the county map uses
+Promise.all(["counties/data/mapchart-visited.txt", "counties/data/mapchart-slept.txt"]
+  .map(u => fetch(u, { cache: "no-store" }).then(r => r.json())))
+  .then(saves => {
+    const ctRegions = /^(Western_Connecticut|Greater_Bridgeport|South_Central_Connecticut|Lower_Connecticut_River_Valley|Southeastern_Connecticut|Northeastern_Connecticut|Capitol|Naugatuck_Valley|Northwest_Hills)__CT$/;
+    const all = new Set(saves.flatMap(s => Object.values(s.groups).flatMap(g => g.paths)).filter(p => !ctRegions.test(p)));
+    update("counties", all.size);
+  }).catch(() => {});
+
+// Anything else that's connected later can write data/live.json
+fetch("data/live.json", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null).then(d => d && Object.entries(d).forEach(([k, v]) => update(k, v))).catch(() => {});
+
+/* =========================================================
+   DOODLE ENGINE
+   Rings of thick marker lines around a scatter of "eyes",
+   broken into strokes, colored in patches, round ends,
+   line and gap about the same width. Rings from neighbouring
+   eyes melt into each other where they meet.
+   ========================================================= */
+function makeRandom(seed) {
+  let s = seed >>> 0 || 1;
+  return () => { s = (Math.imul(s ^ (s >>> 15), 2246822507) + 0x9E3779B9) >>> 0; s ^= s >>> 13; return (s >>> 0) / 4294967296; };
+}
+function makeNoise(seed) {
+  const hash = (x, y) => {
+    let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041);
+    h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+    return (h >>> 0) / 4294967295;
+  };
+  const f = t => t * t * (3 - 2 * t);
+  return (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y), u = f(x - xi), v = f(y - yi);
+    const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+}
+
+function drawDoodle(canvas, opts) {
+  const { seed, colors, lineWidth, allowed = () => true, density = 1 } = opts;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const rand = makeRandom(seed);
+  const warpN = makeNoise(seed + 11), warpM = makeNoise(seed + 23), colorN = makeNoise(seed + 37);
+  const spacing = lineWidth * 2.05;
+
+  // the eyes: centers of the ring systems
+  const n = Math.max(2, Math.round(w * h / Math.pow(290 / density, 2)));
+  const eyes = [];
+  for (let tries = 0; eyes.length < n && tries < n * 40; tries++) {
+    const x = rand() * w, y = rand() * h;
+    if (!allowed(x, y, lineWidth * 6)) continue;
+    if (eyes.some(e => Math.hypot(e.x - x, e.y - y) < spacing * 6)) continue;
+    eyes.push({ x, y, s: 0.92 + rand() * 0.16 });
+  }
+
+  // distance to the nearest eye, melted together with a smooth minimum, then wobbled
+  const k = spacing * 4;
+  const smin = (a, b) => { const hh = Math.max(k - Math.abs(a - b), 0) / k; return Math.min(a, b) - hh * hh * k * 0.25; };
+  const warp = spacing * 1.6, wf = 1 / (spacing * 9);
+  function field(x, y) {
+    const qx = x + (warpN(x * wf, y * wf) - 0.5) * 2 * warp;
+    const qy = y + (warpM(x * wf, y * wf) - 0.5) * 2 * warp;
+    let d = Infinity;
+    for (const e of eyes) d = smin(d, Math.hypot(qx - e.x, qy - e.y) * e.s);
+    return d;
+  }
+
+  // sample the field on a grid
+  const step = Math.max(3, lineWidth * 0.55);
+  const cols = Math.ceil(w / step) + 2, rows = Math.ceil(h / step) + 2;
+  const F = new Float32Array(cols * rows);
+  let max = 0;
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const v = field(i * step, j * step); F[j * cols + i] = v; if (v > max) max = v;
+  }
+
+  // trace each ring as connected polylines (marching squares + chaining)
+  const polylines = [];
+  for (let level = spacing * 1.4; level < max; level += spacing) {
+    const pts = new Map(), adj = new Map();
+    const H = (i, j) => (j * cols + i) * 2, V = (i, j) => (j * cols + i) * 2 + 1;
+    const point = (id, x, y) => { if (!pts.has(id)) pts.set(id, [x, y]); };
+    const link = (p, q) => {
+      (adj.get(p) || adj.set(p, []).get(p)).push(q);
+      (adj.get(q) || adj.set(q, []).get(q)).push(p);
+    };
+    for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) {
+      const a = F[j * cols + i], b = F[j * cols + i + 1], c = F[(j + 1) * cols + i + 1], d = F[(j + 1) * cols + i];
+      const idx = (a > level ? 8 : 0) | (b > level ? 4 : 0) | (c > level ? 2 : 0) | (d > level ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      const x = i * step, y = j * step;
+      const T = H(i, j), R = V(i + 1, j), B = H(i, j + 1), L = V(i, j);
+      const need = { [T]: () => point(T, x + step * (level - a) / (b - a), y),
+                     [R]: () => point(R, x + step, y + step * (level - b) / (c - b)),
+                     [B]: () => point(B, x + step * (level - d) / (c - d), y + step),
+                     [L]: () => point(L, x, y + step * (level - a) / (d - a)) };
+      const seg = (p, q) => { need[p](); need[q](); link(p, q); };
+      switch (idx) {
+        case 1: case 14: seg(L, B); break;
+        case 2: case 13: seg(B, R); break;
+        case 3: case 12: seg(L, R); break;
+        case 4: case 11: seg(T, R); break;
+        case 5: seg(L, T); seg(B, R); break;
+        case 6: case 9: seg(T, B); break;
+        case 7: case 8: seg(L, T); break;
+        case 10: seg(L, B); seg(T, R); break;
+      }
+    }
+    const seen = new Set();
+    const walk = (start) => {
+      const line = [start]; seen.add(start);
+      let cur = start;
+      for (;;) {
+        const next = (adj.get(cur) || []).find(q => !seen.has(q));
+        if (next === undefined) break;
+        seen.add(next); line.push(next); cur = next;
+      }
+      const closed = line.length > 2 && (adj.get(cur) || []).includes(start);
+      polylines.push({ pts: line.map(id => pts.get(id)), closed });
+    };
+    for (const [id, nb] of adj) if (nb.length === 1 && !seen.has(id)) walk(id);
+    for (const id of adj.keys()) if (!seen.has(id)) walk(id);
+  }
+
+  // soften the corners a little (Chaikin)
+  const smooth = (p, closed) => {
+    if (p.length < 3) return p;
+    const out = closed ? [] : [p[0]];
+    const m = closed ? p.length : p.length - 1;
+    for (let i = 0; i < m; i++) {
+      const a = p[i], b = p[(i + 1) % p.length];
+      out.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75]);
+    }
+    if (!closed) out.push(p[p.length - 1]);
+    return out;
+  };
+
+  // color comes in patches that span several rings, like marker colors switched mid-page
+  // (values are rank-equalised so every marker gets used about equally)
+  const cf = 1 / (spacing * 6);
+  const raw = (x, y) => colorN(x * cf, y * cf) * 0.7 + colorN(x * cf * 2.3 + 9, y * cf * 2.3 + 9) * 0.3;
+  const sample = [];
+  for (let i = 0; i < 1500; i++) sample.push(raw(rand() * w, rand() * h));
+  sample.sort((a, b) => a - b);
+  const rank = v => { let lo = 0, hi = sample.length; while (lo < hi) { const m = (lo + hi) >> 1; if (sample[m] < v) lo = m + 1; else hi = m; } return lo / sample.length; };
+  const colorAt = (x, y) => {
+    const v = Math.min(0.999, Math.max(0, rank(raw(x, y)) + (rand() - 0.5) * 0.12));
+    return colors[Math.floor(v * colors.length)];
+  };
+
+  ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.lineWidth = lineWidth;
+  const gapLen = lineWidth * 1.6;
+  for (const pl of polylines) {
+    let p = smooth(smooth(pl.pts, pl.closed), pl.closed);
+    if (pl.closed) p = p.concat([p[0]]);
+    // small closed rings around an eye stay unbroken, one color
+    let total = 0; for (let i = 1; i < p.length; i++) total += Math.hypot(p[i][0] - p[i-1][0], p[i][1] - p[i-1][1]);
+    if (pl.closed && total < spacing * 14 && p.every(([x, y]) => allowed(x, y, lineWidth))) {
+      ctx.strokeStyle = colorAt(p[0][0], p[0][1]); ctx.beginPath(); ctx.moveTo(p[0][0], p[0][1]);
+      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.closePath(); ctx.stroke(); continue;
+    }
+    let dash = [], dashLen = 0, target = spacing * (3 + rand() * 9), gap = 0, color = null;
+    const flush = () => {
+      if (dash.length > 1 && dashLen > lineWidth * 0.6) {
+        ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(dash[0][0], dash[0][1]);
+        for (let i = 1; i < dash.length; i++) ctx.lineTo(dash[i][0], dash[i][1]);
+        ctx.stroke();
+      }
+      dash = []; dashLen = 0;
+    };
+    for (let i = 0; i < p.length; i++) {
+      const [x, y] = p[i];
+      const seg = i ? Math.hypot(x - p[i - 1][0], y - p[i - 1][1]) : 0;
+      if (!allowed(x, y, lineWidth)) { flush(); gap = gapLen; continue; }
+      if (gap > 0) { gap -= seg; continue; }
+      if (!dash.length) { color = colorAt(x, y); target = spacing * (5 + rand() * 16); }
+      dash.push([x, y]); dashLen += seg;
+      if (dashLen > target || (dashLen > spacing * 3 && colorAt(x, y) !== color && rand() < 0.04)) {
+        flush(); gap = gapLen;
+      }
+    }
+    flush();
+  }
+
+  // the eye itself: a small black ring with white inside
+  ctx.strokeStyle = "#141414"; ctx.lineWidth = lineWidth * 0.95;
+  for (const e of eyes) {
+    if (!allowed(e.x, e.y, lineWidth * 2)) continue;
+    ctx.beginPath(); ctx.arc(e.x, e.y, lineWidth * 0.75, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+/* ---------- Hero ---------- */
+(function () {
+  const canvas = document.getElementById("terrain");
+  const label = document.getElementById("label");
+  const button = document.getElementById("redraw");
+  const today = new Date();
+  let seed = today.getFullYear() * 1000 + Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 864e5);
+  let extra = 0;
+  const when = document.getElementById("when");
+
+  function clearings() {
+    const base = canvas.getBoundingClientRect();
+    return [label, button].map(el => {
+      // a Range hugs the actual text, so the clearing follows the words, not the box
+      const r = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node; (node = walker.nextNode());) {
+        if (!node.textContent.trim()) continue;
+        const range = document.createRange(); range.selectNodeContents(node);
+        for (const q of range.getClientRects()) {
+          r.left = Math.min(r.left, q.left); r.top = Math.min(r.top, q.top);
+          r.right = Math.max(r.right, q.right); r.bottom = Math.max(r.bottom, q.bottom);
+        }
+      }
+      const pad = el === label ? 26 : 14;
+      return { x0: r.left - base.left - pad, y0: r.top - base.top - pad, x1: r.right - base.left + pad, y1: r.bottom - base.top + pad, r: 28 };
+    });
+  }
+  function draw() {
+    when.textContent = extra === 0
+      ? "Today's drawing, " + today.toLocaleDateString("en-US", { month: "long", day: "numeric" })
+      : "Drawing no. " + (extra + 1) + " today";
+    const boxes = clearings();
+    const w = canvas.clientWidth;
+    const allowed = (x, y, m = 0) => !boxes.some(b => {
+      const dx = Math.max(b.x0 + b.r - x, 0, x - (b.x1 - b.r)), dy = Math.max(b.y0 + b.r - y, 0, y - (b.y1 - b.r));
+      return Math.hypot(dx, dy) < b.r + m * 0.5;
+    });
+    drawDoodle(canvas, {
+      seed: seed + extra * 7919,
+      colors: ["#2456B8", "#D8352C", "#F07B2B", "#F3C620"],
+      lineWidth: w < 640 ? 6 : 8.5,
+      density: w < 640 ? 1.35 : 1,
+      allowed
+    });
+  }
+  button.addEventListener("click", () => { extra++; draw(); });
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(draw);
+  let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 150); });
+})();
+
+/* ---------- Footer: a black coil, like the ink-only doodles ---------- */
+(function () {
+  const canvas = document.getElementById("blob");
+  const n = makeNoise(4242);
+  function draw() {
+    const w = canvas.clientWidth, h = canvas.clientHeight, cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.46;
+    const inside = (x, y, m = 0) => {
+      const a = Math.atan2(y - cy, x - cx), d = Math.hypot(x - cx, y - cy);
+      const r = R * (0.8 + 0.22 * n(Math.cos(a) * 1.6 + 5, Math.sin(a) * 1.6 + 5));
+      return d < r - m * 0.5;
+    };
+    drawDoodle(canvas, { seed: 77, colors: ["#141414"], lineWidth: w < 180 ? 3.6 : 4.6, allowed: inside, density: 2.6 });
+  }
+  draw();
+  let t; window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(draw, 150); });
+})();
+</script>
+</body>
+</html>
