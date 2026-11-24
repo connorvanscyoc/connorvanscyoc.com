@@ -2,14 +2,22 @@
 // Cache name bumped from v3 to v4 - this forces the activate handler to
 // delete the old cache, which forces a fresh fetch of index.html (and
 // therefore pickup of the new v59 app code: CARTO map API key).
-const CACHE_NAME = 'pie-chart-of-life-v6';  // v5: moved to connorvanscyoc.com/tracker; v6: publishes the public centerpoint
+const CACHE_NAME = 'pie-chart-of-life-v7';  // v5: moved to connorvanscyoc.com/tracker; v6: publishes the public centerpoint; v7: no redirected responses (Safari refuses them)
 const urlsToCache = [
     './',
-    './index.html',
     '../vendor/chart-4.4.1.umd.min.js',
     '../vendor/leaflet-1.9.4/leaflet.css',
     '../vendor/leaflet-1.9.4/leaflet.js'
 ];
+
+// (v7) Cloudflare redirects /tracker/index.html to /tracker/. Safari won't open a page
+// the service worker answers with a redirected response, so copy it into a clean one.
+function clean(response) {
+    if (!response || !response.redirected) return response;
+    return response.blob().then(body => new Response(body, {
+        status: response.status, statusText: response.statusText, headers: response.headers
+    }));
+}
 
 // Install event - cache essential files
 self.addEventListener('install', event => {
@@ -86,15 +94,32 @@ self.addEventListener('fetch', event => {
         return;
     }
     
+    // (v7) Opening the app: get the newest page, fall back to the saved one offline
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(clean)
+                .then(response => {
+                    if (response.ok) {
+                        const copy = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put('./', copy));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match('./').then(clean))
+        );
+        return;
+    }
+
     // For everything else, try cache first, then network
     event.respondWith(
         caches.match(event.request)
             .then(response => {
                 if (response) {
-                    return response;
+                    return clean(response);
                 }
                 
-                return fetch(event.request).then(response => {
+                return fetch(event.request).then(clean).then(response => {
                     // Don't cache non-successful responses
                     if (!response || response.status !== 200 || response.type !== 'basic') {
                         return response;
@@ -112,7 +137,7 @@ self.addEventListener('fetch', event => {
             .catch(() => {
                 // Return offline fallback for HTML requests
                 if (event.request.headers.get('accept').includes('text/html')) {
-                    return caches.match('./index.html');
+                    return caches.match('./').then(clean);
                 }
             })
     );

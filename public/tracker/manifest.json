@@ -2,7 +2,7 @@
     "name": "Pie Chart of Life",
     "short_name": "Pie Chart",
     "description": "Track your lifetime location journey",
-    "start_url": "./index.html",
+    "start_url": "./",
     "display": "standalone",
     "background_color": "#1a1a2e",
     "theme_color": "#1a1a2e",
