@@ -473,22 +473,8 @@
         <li><span>From my childhood home</span><b>${fmt(r.milesFromHome)} mi</b></li>
         <li><span>From where I was born</span><b>${fmt(r.milesFromBirth)} mi</b></li>
         <li><span>Days on the ground</span><b>${fmt(r.totalDays)}</b></li>
-        <li><span>Places counted</span><b>${fmt(r.locationCount)}</b></li>
-        ${r.gpsPoints ? `<li><span>GPS points</span><b>${fmt(r.gpsPoints)}</b></li>` : ""}
       </ul>
-      ${gapNote(r)}
       <p class="cp-note">Worked out by the tracker on my phone, with the same data and math it uses, as of ${new Date(C.computedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.</p>`;
-  }
-  // The centerpoint can only weigh time that has a spot on the map, so time in the air is left out.
-  function gapNote(r) {
-    const d = daysBetween(r.start, r.end), all = Object.values(d).reduce((a, v) => a + v, 0);
-    const air = Object.keys(d).filter(isFlight).reduce((a, k) => a + d[k], 0);
-    const other = all - air - r.totalDays;
-    if (air < 0.05 && Math.abs(other) < 1) return "";
-    const days = n => n < 10 ? fmt1(n) : fmt(n);
-    let t = `That's ${days(all)} days in this range minus ${days(air)} days in the air, which have no spot on the map.`;
-    if (other >= 1) t += ` Another ${days(other)} days have no GPS points, so they aren't counted either.`;
-    return `<p class="cp-note">${t}</p>`;
   }
   const fmtDate = t => new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   function showFrame(i) {
