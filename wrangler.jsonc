@@ -1,9 +1,16 @@
-// Cloudflare settings: serve everything in public/ as the website.
+// Cloudflare settings for connorvanscyoc.com.
+// Files in public/ are served as the website; requests to /api/* run src/worker.js.
 // "name" must match the Worker's name in the Cloudflare dashboard.
 {
   "name": "jolly-river-ef4d",
+  "main": "src/worker.js",
   "compatibility_date": "2026-11-01",
   "assets": {
-    "directory": "./public"
-  }
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [
+    { "binding": "BANANAS", "id": "4b854a3a6d994f6f8d708f284768c313" }
+  ]
 }

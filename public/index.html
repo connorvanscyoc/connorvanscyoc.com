@@ -231,7 +231,7 @@ const PROJECTS = {
   living: [
     { symbol: "banana", title: "Banana counter",
       text: "Every banana I eat, logged with one tap on my phone.",
-      live: "bananas", unit: "bananas this year", href: null },
+      live: "bananas", unit: "bananas eaten", href: "bananas/" },
     { symbol: "county", title: "Lifetime county map",
       text: "Every U.S. county I've been to, and the ones I've spent the night in.",
       live: "counties", unit: "counties visited", href: "counties/" },
@@ -313,6 +313,14 @@ Promise.all(["counties/data/mapchart-visited.txt", "counties/data/mapchart-slept
     const ctRegions = /^(Western_Connecticut|Greater_Bridgeport|South_Central_Connecticut|Lower_Connecticut_River_Valley|Southeastern_Connecticut|Northeastern_Connecticut|Capitol|Naugatuck_Valley|Northwest_Hills)__CT$/;
     const all = new Set(saves.flatMap(s => Object.values(s.groups).flatMap(g => g.paths)).filter(p => !ctRegions.test(p)));
     update("counties", all.size);
+  }).catch(() => {});
+
+// Bananas: the same log the banana counter on my phone saves to
+fetch("/api/bananas", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d || !Array.isArray(d.events) || !d.events.length) return;
+    update("bananas", d.events.filter(e => e.t === "eat" || e.t === "away").reduce((a, e) => a + Number(e.n), 0));
   }).catch(() => {});
 
 // Anything else that's connected later can write data/live.json
