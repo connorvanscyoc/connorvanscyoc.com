@@ -16,6 +16,7 @@
    the previous log is copied to backup:YYYY-MM-DD and kept for 120 days. */
 
 import { pie, PIE_CACHE_KEY } from "./pie.js";
+import { therapy } from "./therapy.js";
 
 const TYPES = new Set(["eat", "away", "buy", "open", "count"]);
 const CORS = {
@@ -143,6 +144,7 @@ export default {
     if (url.pathname === "/api/pie") return pie(req, env, json, "summary");
     if (url.pathname === "/api/pie/timeline") return pie(req, env, json, "timeline");
     if (url.pathname === "/api/pie/center" || url.pathname === "/api/tracker/center") return center(req, env);
+    if (url.pathname === "/api/therapy") return therapy(req, env, json);
     if (url.pathname === "/api/tracker/script") return tracker(req, env, "script");
     if (url.pathname === "/api/tracker/gps") return tracker(req, env, "gps");
     return env.ASSETS.fetch(req);

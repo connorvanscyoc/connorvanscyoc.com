@@ -240,7 +240,13 @@ const PROJECTS = {
       live: "miles", unit: "miles on foot and bike", href: null },
     { symbol: "pie", title: "Pie chart of life",
       text: "Every day of my life, split by the state or country I spent it in.",
-      live: "pie", unit: "days mapped", href: "pie/" },
+      live: "pie", unit: "days", href: "pie/" },
+    { symbol: "days", title: "Life in days",
+      text: "A square for every day I've been alive, colored by where I spent it. My 20s, or the whole thing.",
+      live: "days", unit: "days so far", href: "calendar/" },
+    { symbol: "therapy", title: "Every therapy session",
+      text: "A calendar of every session since June 2022, filled in from my Venmo payments.",
+      live: "therapy", unit: "sessions", href: "therapy/" },
     { symbol: "town", title: "Every town in America",
       text: "An interactive map of every town in the country.",
       live: "towns", unit: "towns", href: "https://claude.ai/artifact/RaRVQqNGPzFUYX8cdqGLCz" }
@@ -276,6 +282,8 @@ const SYMBOLS = {
   bike:   `<circle cx="12" cy="30" r="8" fill="var(--teal)" ${K}/><circle cx="36" cy="30" r="8" fill="var(--orange)" ${K}/><path d="M12 30 L21 16 L31 16 L36 30 M21 16 L24 30 L31 16" fill="none" ${K}/>`,
   bird:   `<path d="M5 26 Q 15 12, 24 25 Q 33 12, 43 26" fill="none" stroke="#141414" stroke-width="4" stroke-linecap="round"/>`,
   street: `<path d="M5 15 H43" stroke="var(--red)" stroke-width="5" stroke-linecap="round"/><path d="M5 24 H43" stroke="var(--yellow)" stroke-width="5" stroke-linecap="round" stroke-dasharray="7 7"/><path d="M5 33 H43" stroke="var(--blue)" stroke-width="5" stroke-linecap="round"/>`,
+  days:   `<rect x="6" y="8" width="10" height="10" fill="var(--red)" ${K}/><rect x="19" y="8" width="10" height="10" fill="var(--red)" ${K}/><rect x="32" y="8" width="10" height="10" fill="var(--blue)" ${K}/><rect x="6" y="21" width="10" height="10" fill="var(--yellow)" ${K}/><rect x="19" y="21" width="10" height="10" fill="var(--blue)" ${K}/><rect x="32" y="21" width="10" height="10" fill="var(--blue)" ${K}/><rect x="6" y="34" width="10" height="10" fill="var(--green)" ${K}/><rect x="19" y="34" width="10" height="10" fill="var(--blue)" ${K}/>`,
+  therapy: `<rect x="6" y="8" width="10" height="10" fill="#fff" ${K}/><rect x="19" y="8" width="10" height="10" fill="var(--orange)" ${K}/><rect x="32" y="8" width="10" height="10" fill="#fff" ${K}/><rect x="6" y="21" width="10" height="10" fill="#fff" ${K}/><rect x="19" y="21" width="10" height="10" fill="#fff" ${K}/><rect x="32" y="21" width="10" height="10" fill="var(--orange)" ${K}/><rect x="6" y="34" width="10" height="10" fill="var(--orange)" ${K}/><rect x="19" y="34" width="10" height="10" fill="#fff" ${K}/>`,
   leaf:   `<path d="M8 40 C 8 20, 20 8, 42 8 C 42 28, 28 40, 8 40 Z" fill="var(--green)" ${K}/><path d="M8 40 L 30 18" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>`
 };
 const svg = (n) => `<svg viewBox="0 0 48 48" aria-hidden="true">${SYMBOLS[n] || ""}</svg>`;
@@ -327,6 +335,18 @@ fetch("/api/bananas", { cache: "no-store" })
 fetch("/api/pie", { cache: "no-store" })
   .then(r => r.ok ? r.json() : null)
   .then(d => { if (d && d.daysMapped) update("pie", d.daysMapped); })
+  .catch(() => {});
+
+// Life in days: same day count as the pie chart
+fetch("/api/pie", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.daysMapped) update("days", d.daysMapped); })
+  .catch(() => {});
+
+// Therapy: sessions on the calendar
+fetch("/api/therapy", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.days) update("therapy", Object.values(d.days).reduce((a, n) => a + n, 0)); })
   .catch(() => {});
 
 // Anything else that's connected later can write data/live.json
