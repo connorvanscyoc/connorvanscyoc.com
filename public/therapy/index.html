@@ -17,10 +17,11 @@
   a { color: var(--accent); text-underline-offset: 3px; }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 clamp(12px, 3vw, 24px); }
-  .top { padding: 22px 0 0; }
+  .top { padding: 18px 0 0; }
   .home { font-weight: 700; color: var(--ink); text-decoration: none; }
   .home:hover { text-decoration: underline; }
-  svg { display: block; width: 100%; height: auto; }
+  /* Fit the whole calendar on one screen, like the original story. */
+  svg { display: block; width: 100%; height: auto; max-height: calc(100svh - 64px); }
   svg text { font-family: Inter, system-ui, sans-serif; }
   .status { color: var(--muted); margin: 40px 0; }
   .foot { color: var(--faint); font-size: 14px; margin: 8px 0 64px; max-width: 70ch; }

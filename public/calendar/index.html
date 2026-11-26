@@ -16,43 +16,87 @@
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Archivo", system-ui, sans-serif; font-size: 17px; line-height: 1.5; }
   a { color: var(--accent); text-underline-offset: 3px; }
   :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
-  .top { padding: 22px 0; }
+
+  /* Desktop: the words on the left, the calendar in a phone-story-shaped frame as tall as the screen. */
+  .layout { display: grid; grid-template-columns: minmax(260px, 380px) auto; grid-template-rows: 1fr auto auto 1fr;
+    grid-template-areas: "." "head" "notes" "."; justify-content: center; column-gap: clamp(28px, 5vw, 72px);
+    min-height: 100svh; padding: 16px clamp(16px, 4vw, 48px); }
+  .head { grid-area: head; grid-column: 1; }
+  .notes { grid-area: notes; grid-column: 1; }
+  .frame { grid-column: 2; grid-row: 1 / -1; align-self: center; }
   .home { font-weight: 700; color: var(--ink); text-decoration: none; }
   .home:hover { text-decoration: underline; }
-  h1 { margin: 28px 0 0; font-variation-settings: "wdth" 125; font-weight: 850; font-size: clamp(36px, 6vw, 68px); line-height: 0.95; letter-spacing: -0.02em; }
-  .lede { margin: 16px 0 0; max-width: 60ch; color: var(--muted); }
-  .seg { display: inline-flex; margin: 28px 0 0; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
-  .seg button { font: inherit; font-weight: 650; font-size: 15px; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+  h1 { margin: 28px 0 0; font-variation-settings: "wdth" 125; font-weight: 850; font-size: clamp(34px, 4.6vw, 60px); line-height: 0.95; letter-spacing: -0.02em; }
+  .lede { margin: 16px 0 0; color: var(--muted); }
+  .seg { display: inline-flex; margin: 24px 0 0; border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { font: inherit; font-weight: 650; font-size: 15px; color: var(--muted); background: none; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
-  .key { position: sticky; top: 0; z-index: 3; background: var(--bg); margin: 24px 0 0; padding: 12px 0 10px;
-    display: flex; flex-wrap: wrap; gap: 6px 18px; font-family: Inter, system-ui, sans-serif; font-size: 15px; border-bottom: 1px solid var(--line); }
-  .key span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
-  .key i { width: 13px; height: 13px; border-radius: 2px; display: inline-block; }
-  svg { display: block; width: 100%; height: auto; margin-top: 14px; }
+  .actions { margin: 14px 0 0; display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { font: inherit; font-weight: 650; font-size: 15px; color: var(--ink); background: #1c212b; border: 1px solid #343b49; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+  .btn:hover { background: #252b37; }
+  .foot { color: var(--faint); font-size: 14px; margin: 22px 0 0; }
+  .status { color: var(--muted); }
+
+  .frame { container-type: inline-size; aspect-ratio: 9 / 16; height: min(calc(100svh - 32px), calc((100vw - 32px) * 16 / 9)); max-width: calc(100vw - 32px);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; position: relative; }
+  .scroller { position: absolute; inset: 0; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .key { flex: none; position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 5cqw 4cqw 2.4cqw 5cqw;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 0.9cqw 2.6cqw; font-family: Inter, system-ui, sans-serif; font-size: 2.25cqw; line-height: 1.3; }
+  .key span { display: inline-flex; align-items: center; gap: 0.8cqw; white-space: nowrap; }
+  .key i { width: 1.9cqw; height: 1.9cqw; border-radius: 0.2cqw; display: inline-block; }
+  svg { display: block; flex: none; width: 100%; height: auto; }
   svg text { font-family: Inter, system-ui, sans-serif; }
-  .status { color: var(--muted); margin-top: 24px; }
-  .foot { color: var(--faint); font-size: 14px; margin: 28px 0 64px; }
+  /* "contain": the whole calendar inside the frame, centered */
+  .scroller.fit { overflow: hidden; }
+  .scroller.fit svg { flex: 0 1 auto; min-height: 0; margin-bottom: 3cqw; }
+  .scroller.fit .grow { flex: 1 1 0; }
+
   .tip { position: fixed; pointer-events: none; background: #1c212b; border: 1px solid #343b49; border-radius: 8px; padding: 8px 10px;
     font-family: Inter, system-ui, sans-serif; font-size: 13px; line-height: 1.35; max-width: 240px; opacity: 0; transition: opacity .1s; z-index: 5; }
   .tip b { font-weight: 600; } .tip .c { color: var(--muted); }
+
+  /* Phones: words on top, then the frame full width (about one screen tall). */
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: none; grid-template-areas: none; min-height: 0; row-gap: 14px; padding-bottom: 40px; }
+    .head, .notes, .frame { grid-column: 1; grid-row: auto; grid-area: auto; }
+    h1 { margin-top: 10px; font-size: 34px; }
+    .seg { margin-top: 14px; }
+    .frame { height: auto; width: calc(100vw - 32px); justify-self: center; }
+    .lede { margin-top: 4px; }
+    .notes { order: 3; }
+  }
   @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><a class="home" href="/">Connor Van Scyoc</a></div>
-  <h1>Life in days</h1>
-  <p class="lede">One square for every day I've been alive, colored by the place I spent most of that day in. It comes straight from the tracker on my phone, so a new square fills in every day.</p>
-  <div class="seg" role="group" aria-label="Which years">
-    <button type="button" data-view="20s" aria-pressed="true">My 20s</button>
-    <button type="button" data-view="life" aria-pressed="false">Every day of my life</button>
+<main class="layout">
+  <div class="head">
+    <a class="home" href="/">Connor Van Scyoc</a>
+    <h1>Life in days</h1>
+    <div class="seg" role="group" aria-label="Which years">
+      <button type="button" data-view="20s" aria-pressed="true">My 20s</button>
+      <button type="button" data-view="life" aria-pressed="false">Every day of my life</button>
+    </div>
+    <div class="actions" id="actions" hidden>
+      <button type="button" class="btn" id="play">Play</button>
+      <button type="button" class="btn" id="fitBtn" hidden>See it all at once</button>
+    </div>
   </div>
-  <div class="key" id="key"></div>
-  <p class="status" id="status">Loading…</p>
-  <svg id="cal" role="img" aria-label="Calendar with one square per day, a row of weeks for each year of my life"></svg>
-  <p class="foot" id="foot"></p>
-</div>
+  <div class="notes">
+    <p class="lede">One square for every day I've been alive, colored by the place I spent most of that day in. It comes straight from the tracker on my phone, so a new square fills in every day.</p>
+    <p class="foot" id="foot"></p>
+  </div>
+  <div class="frame" id="frame">
+    <div class="scroller fit" id="scroller">
+      <div class="grow"></div>
+      <div class="key" id="key"></div>
+      <p class="status" id="status" style="padding: 0 5cqw">Loading…</p>
+      <svg id="cal" role="img" aria-label="Calendar with one square per day, a row of weeks for each year of my life" preserveAspectRatio="xMidYMin meet"></svg>
+      <div class="grow"></div>
+    </div>
+  </div>
+</main>
 <div class="tip" id="tip"></div>
 <script>
 (async () => {
@@ -115,16 +159,19 @@
     winner[key(y, m, dd)] = best || E[j].p;
   }
 
-  // Layout, matching the original: 14px squares, 16px apart, a week per column, Sunday on top.
+
+  // Layout, matching the original: 14px squares, 16px apart, a week per column, Sunday on top, on a 1080-wide story.
   const NS = "http://www.w3.org/2000/svg", W = 1080, CELL = 14, STEP = 16, GX = 167, LX = 150, BLOCK = 7 * STEP - 2, PITCH = 124;
-  const svg = $("cal");
+  const svg = $("cal"), scroller = $("scroller");
   const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); (p || svg).appendChild(e); return e; };
   const txt = (s, a) => { const e = el("text", a); e.textContent = s; return e; };
   const lastAge = ty - by - ((tm < bm || (tm === bm && td < bd)) ? 1 : 0);
+  let view = "20s", fit = true;
 
-  function draw(view) {
+  function draw() {
     svg.textContent = "";
     const ages = view === "20s" ? [20, Math.min(29, lastAge)] : [0, lastAge];
+    const small = view === "life" && fit;   // the whole life squeezed into one screen: fewer, bigger labels
     let row = 0;
     for (let age = ages[0]; age <= ages[1]; age++, row++) {
       const y0 = row * PITCH + 4, start = Date.UTC(by + age, bm - 1, bd), end = Date.UTC(by + age + 1, bm - 1, bd);
@@ -135,20 +182,51 @@
         const r = el("rect", { x: GX + Math.floor((i + off) / 7) * STEP, y: y0 + ((i + off) % 7) * STEP, width: CELL, height: CELL, fill: COLOR[groupOf(winner[k])] }, g);
         r.dataset.k = k; r.dataset.a = age;
       }
-      txt("Age " + age, { x: LX, y: y0 + BLOCK / 2 + 4, "text-anchor": "end", fill: "#eceef2", "font-size": 26, "font-weight": 700 });
-      txt(String(by + age + 1), { x: LX, y: y0 + BLOCK / 2 + 25, "text-anchor": "end", fill: "#8c93a3", "font-size": 17 });
+      if (!small) {
+        txt("Age " + age, { x: LX, y: y0 + BLOCK / 2 + 4, "text-anchor": "end", fill: "#eceef2", "font-size": 26, "font-weight": 700 });
+        txt(String(by + age + 1), { x: LX, y: y0 + BLOCK / 2 + 25, "text-anchor": "end", fill: "#8c93a3", "font-size": 17 });
+      } else if (age % 5 === 0) {
+        txt(String(age), { x: LX, y: y0 + BLOCK / 2 + 20, "text-anchor": "end", fill: "#eceef2", "font-size": 64, "font-weight": 700 });
+      }
     }
-    svg.setAttribute("viewBox", `0 0 ${W} ${row * PITCH}`);
+    const h = row * PITCH;
+    svg.setAttribute("viewBox", small ? `60 0 ${W - 60} ${h}` : `0 0 ${W} ${h}`);
+    scroller.classList.toggle("fit", fit);
+    scroller.scrollTop = 0;
+    $("actions").hidden = view !== "life";
+    $("fitBtn").hidden = fit;
   }
 
   const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   $("foot").textContent = `From ${MONTH[bm - 1]} ${bd}, ${by} through today. When a day is split between places, the square goes to the one I spent the most hours in; hours on a plane don't count.`;
 
+  // Play: scroll through the whole life at full size, like the original video (about 30 seconds).
+  let anim = null;
+  function stop() { if (anim) cancelAnimationFrame(anim); anim = null; $("play").textContent = "Play"; }
+  function play() {
+    if (anim) return stop();
+    if (fit) { fit = false; draw(); }
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    if (scroller.scrollTop >= max - 2) scroller.scrollTop = 0;
+    const from = scroller.scrollTop, t0 = performance.now(), dur = 30000 * (1 - from / Math.max(1, max));
+    $("play").textContent = "Pause";
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      scroller.scrollTop = from + (max - from) * p;
+      if (p < 1) anim = requestAnimationFrame(step); else stop();
+    };
+    anim = requestAnimationFrame(step);
+  }
+  $("play").addEventListener("click", play);
+  $("fitBtn").addEventListener("click", () => { stop(); fit = true; draw(); });
+  scroller.addEventListener("wheel", () => anim && stop(), { passive: true });
+  scroller.addEventListener("touchstart", () => anim && stop(), { passive: true });
+
   document.querySelectorAll("[data-view]").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll("[data-view]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
-    draw(b.dataset.view);
+    stop(); view = b.dataset.view; fit = true; draw();
   }));
-  draw("20s");
+  draw();
 
   const tip = $("tip");
   const fmt = k => new Date(k + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
