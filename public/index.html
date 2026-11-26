@@ -235,9 +235,9 @@ const PROJECTS = {
     { symbol: "county", title: "Lifetime county map",
       text: "Every U.S. county I've been to, and the ones I've spent the night in.",
       live: "counties", unit: "counties visited", href: "counties/" },
-    { symbol: "track", title: "Lifetime heatmaps",
+    { symbol: "track", title: "Lifetime heatmap",
       text: "Every hike, walk, run and ride from Strava and Nike Run Club, stacked on one map.",
-      live: "miles", unit: "miles on foot and bike", href: null },
+      live: "miles", unit: "miles on foot and bike", href: "heatmap/" },
     { symbol: "pie", title: "Pie chart of life",
       text: "Every day of my life, split by the state or country I spent it in.",
       live: "pie", unit: "days", href: "pie/" },
@@ -335,6 +335,12 @@ fetch("/api/bananas", { cache: "no-store" })
 fetch("/api/pie", { cache: "no-store" })
   .then(r => r.ok ? r.json() : null)
   .then(d => { if (d && d.daysMapped) update("pie", d.daysMapped); })
+  .catch(() => {});
+
+// Heatmap: miles across every recorded ride, run, walk and hike
+fetch("heatmap/summary.json", { cache: "no-cache" })
+  .then(r => r.ok ? r.json() : null)
+  .then(d => { if (d && d.miles) update("miles", d.miles); })
   .catch(() => {});
 
 // Life in days: same day count as the pie chart

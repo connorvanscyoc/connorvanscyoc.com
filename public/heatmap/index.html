@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lifetime heatmap · Connor Van Scyoc</title>
+<meta name="description" content="Every ride, run, walk and hike Connor Van Scyoc has recorded, on one map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../vendor/leaflet-1.9.4/leaflet.css">
+<style>
+  :root { --bg: #0e1116; --ink: #eceef2; --muted: #8c93a3; --faint: #5e6574; --line: #262b35; --accent: #8fb4ff;
+    --ride: #4cc9f0; --run: #ff5d8f; --walk: #ffd23f; --hike: #3ddc84; --all: #ff8a3d; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Archivo", system-ui, sans-serif; font-size: 17px; line-height: 1.5;
+    font-feature-settings: "tnum" 1; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+  .top { padding: 22px 0 0; }
+  .home { font-weight: 700; color: var(--ink); text-decoration: none; }
+  .home:hover { text-decoration: underline; }
+  .head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: end; margin-top: 28px; }
+  h1 { margin: 0; font-variation-settings: "wdth" 125; font-weight: 850; font-size: clamp(36px, 6vw, 68px); line-height: 0.95; letter-spacing: -0.02em; }
+  .lede { margin: 14px 0 0; color: var(--muted); max-width: 56ch; }
+  .total { text-align: right; }
+  .total .num { display: block; font-variation-settings: "wdth" 70; font-weight: 800; font-size: clamp(44px, 6vw, 72px); line-height: 0.9; }
+  .total .label { display: block; margin-top: 10px; color: var(--muted); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 28px 0 12px; }
+  .types { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font: inherit; font-size: 15px; font-weight: 650; color: var(--ink); background: #161a21; border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 14px 6px 10px; display: inline-flex; align-items: center; gap: 9px; cursor: pointer; }
+  .chip i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+  .chip small { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .chip[aria-pressed="false"] { opacity: 0.45; }
+  .chip[aria-pressed="false"] i { background: transparent; box-shadow: inset 0 0 0 2px var(--c); }
+  body.mono .chip i { --c: var(--all); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 650; cursor: pointer; user-select: none; }
+  .switch input { appearance: none; width: 38px; height: 22px; border-radius: 999px; background: #2a303b; position: relative; margin: 0; cursor: pointer; transition: background .15s; }
+  .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--ink); transition: transform .15s; }
+  .switch input:checked { background: var(--all); }
+  .switch input:checked::after { transform: translateX(16px); }
+
+  .places { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; font-size: 14px; }
+  .places span { color: var(--faint); margin-right: 4px; align-self: center; }
+  .places button { font: inherit; font-weight: 600; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  .places button:hover { color: var(--ink); border-color: var(--line); }
+  .places button[aria-current="true"] { color: var(--ink); border-color: #3a4150; }
+
+  #map { height: max(520px, calc(100svh - 120px)); border-radius: 12px; background: #0b0d11; }
+  .leaflet-container { font-family: "Archivo", system-ui, sans-serif; }
+  .leaflet-tile-pane { filter: brightness(0.75) saturate(0.6); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #1c212b; color: var(--ink); border: 1px solid #343b49; box-shadow: none; }
+  .leaflet-popup-content { margin: 10px 14px; font-size: 14px; line-height: 1.4; }
+  .leaflet-popup-content b { font-weight: 700; }
+  .leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+  .leaflet-control-attribution { background: rgba(14,17,22,.7) !important; color: var(--faint); }
+  .leaflet-control-attribution a { color: var(--muted); }
+  .foot { color: var(--faint); font-size: 14px; margin: 16px 0 56px; }
+  .status { color: var(--muted); }
+
+  @media (max-width: 700px) {
+    .head { grid-template-columns: 1fr; }
+    .total { text-align: left; }
+    #map { height: 70svh; border-radius: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a class="home" href="/">Connor Van Scyoc</a></div>
+  <div class="head">
+    <div>
+      <h1>Lifetime heatmap</h1>
+      <p class="lede">Every ride, run, walk and hike I've recorded, stacked on one map. The more often I've been down a road, the brighter it glows. Tap a line to see which trip it was.</p>
+    </div>
+    <div class="total"><span class="num" id="miles">—</span><span class="label" id="totalLabel">miles</span></div>
+  </div>
+  <div class="controls">
+    <div class="types" id="types" role="group" aria-label="Activity types"></div>
+    <label class="switch"><input type="checkbox" id="mono"> One color</label>
+  </div>
+  <div class="places" id="places"></div>
+  <div id="map" role="img" aria-label="Map of every recorded ride, run, walk and hike"></div>
+  <p class="foot" id="foot"></p>
+</div>
+<script src="../vendor/leaflet-1.9.4/leaflet.js"></script>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+  const TYPES = [["ride", "Rides"], ["run", "Runs"], ["walk", "Walks"], ["hike", "Hikes"]];
+  const css = getComputedStyle(document.documentElement);
+  const COLOR = Object.fromEntries(TYPES.map(([k]) => [k, css.getPropertyValue("--" + k).trim()]));
+  const ONE = css.getPropertyValue("--all").trim();
+  // Places to jump to, named by hand from where the activities cluster.
+  const PLACES = [
+    ["Washington, DC", 38.915, -77.035, 12], ["Delaware beaches", 38.72, -75.1, 12], ["Harford County, MD", 39.56, -76.5, 11],
+    ["Shenandoah", 38.84, -78.05, 11], ["Chincoteague", 37.92, -75.38, 12], ["New York", 40.75, -73.97, 12],
+    ["Aspen", 39.19, -106.82, 11], ["Phoenix", 33.63, -112.02, 11], ["San Francisco", 37.78, -122.44, 12], ["Bend", 44.06, -121.32, 12],
+    ["Puerto Escondido", 15.86, -97.06, 13], ["Lake Atitlán", 14.71, -91.25, 12], ["Sydney", -33.8, 151.25, 11]
+  ];
+
+  const map = L.map("map", { preferCanvas: true, zoomControl: true, scrollWheelZoom: true, worldCopyJump: true }).setView([38.915, -77.035], 12);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=cb1_3vq8_1_f27ba342c08f762c53d548d6", {
+    attribution: "&copy; OpenStreetMap contributors &copy; CARTO", subdomains: "abcd", maxZoom: 18
+  }).addTo(map);
+  const renderer = L.canvas({ padding: 0.5, tolerance: 6 });
+
+  let D;
+  try { const r = await fetch("tracks.json", { cache: "no-cache" }); if (!r.ok) throw 0; D = await r.json(); }
+  catch { $("foot").textContent = "The map's data couldn't load just now. Try refreshing in a minute."; return; }
+
+  function decode(s) {
+    const pts = []; let i = 0, lat = 0, lng = 0;
+    while (i < s.length) {
+      for (let k = 0; k < 2; k++) {
+        let sh = 0, r = 0, b;
+        do { b = s.charCodeAt(i++) - 63; r |= (b & 31) << sh; sh += 5; } while (b >= 32);
+        const v = r & 1 ? ~(r >> 1) : r >> 1;
+        if (k === 0) lat += v; else lng += v;
+      }
+      pts.push([lat / 1e5, lng / 1e5]);
+    }
+    return pts;
+  }
+
+  const on = Object.fromEntries(TYPES.map(([k]) => [k, true]));
+  let mono = false;
+  const weight = () => map.getZoom() >= 14 ? 3 : map.getZoom() >= 11 ? 2.2 : 1.6;
+  const style = k => ({ color: mono ? ONE : COLOR[k], weight: weight(), opacity: mono ? 0.4 : 0.5, lineCap: "round", lineJoin: "round" });
+  const fmtDate = d => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const NAME = { ride: "Ride", run: "Run", walk: "Walk", hike: "Hike" };
+
+  const groups = Object.fromEntries(TYPES.map(([k]) => [k, L.layerGroup().addTo(map)]));
+  // Zoomed far out, lines shrink to nothing, so each activity also gets a dot where it started.
+  const dots = Object.fromEntries(TYPES.map(([k]) => [k, L.layerGroup()]));
+  const FAR = 8;
+  const dotStyle = k => ({ radius: 3.5, stroke: false, fillColor: mono ? ONE : COLOR[k], fillOpacity: 0.7, renderer });
+  const allDots = [];
+  const lines = [];
+  const stats = Object.fromEntries(TYPES.map(([k]) => [k, { n: 0, mi: 0 }]));
+  for (const a of D.activities) {
+    stats[a.k].n++; stats[a.k].mi += a.m;
+    const latlngs = a.p.map(decode);
+    const line = L.polyline(latlngs, { ...style(a.k), renderer, interactive: true });
+    line.kind = a.k; line.act = a;
+    line.on("click", e => {
+      L.popup({ closeButton: false, offset: [0, -4] }).setLatLng(e.latlng)
+        .setContent(`<b>${NAME[a.k]}</b>, ${a.m.toFixed(1)} mi<br>${fmtDate(a.d)}`).openOn(map);
+      line.setStyle({ color: "#ffffff", opacity: 1, weight: weight() + 1.5 }); line.bringToFront();
+      map.once("popupclose", () => line.setStyle(style(line.kind)));
+    });
+    groups[a.k].addLayer(line); lines.push(line);
+    const dot = L.circleMarker(latlngs[0][0], dotStyle(a.k)); dot.kind = a.k;
+    dot.on("click", e => L.popup({ closeButton: false }).setLatLng(e.latlng).setContent(`<b>${NAME[a.k]}</b>, ${a.m.toFixed(1)} mi<br>${fmtDate(a.d)}`).openOn(map));
+    dots[a.k].addLayer(dot); allDots.push(dot);
+  }
+  function showLayers() {
+    const far = map.getZoom() < FAR;
+    for (const [k] of TYPES) {
+      const want = on[k];
+      (want && !far) ? groups[k].addTo(map) : map.removeLayer(groups[k]);
+      (want && far) ? dots[k].addTo(map) : map.removeLayer(dots[k]);
+    }
+  }
+  map.on("zoomend", () => { lines.forEach(l => l.setStyle({ weight: weight() })); showLayers(); });
+
+  // Totals and toggles
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+  function totals() {
+    const mi = TYPES.reduce((s, [k]) => s + (on[k] ? stats[k].mi : 0), 0);
+    const n = TYPES.reduce((s, [k]) => s + (on[k] ? stats[k].n : 0), 0);
+    $("miles").textContent = fmt(mi);
+    $("totalLabel").textContent = `miles across ${n.toLocaleString("en-US")} ${n === 1 ? "activity" : "activities"}`;
+  }
+  $("types").innerHTML = TYPES.map(([k, label]) =>
+    `<button type="button" class="chip" data-k="${k}" aria-pressed="true" style="--c:${COLOR[k]}"><i></i>${label} <small>${fmt(stats[k].mi)} mi</small></button>`).join("");
+  $("types").addEventListener("click", e => {
+    const b = e.target.closest("[data-k]"); if (!b) return;
+    const k = b.dataset.k; on[k] = !on[k]; b.setAttribute("aria-pressed", String(on[k]));
+    showLayers();
+    totals();
+  });
+  $("mono").addEventListener("change", e => {
+    mono = e.target.checked; document.body.classList.toggle("mono", mono);
+    lines.forEach(l => l.setStyle(style(l.kind)));
+    allDots.forEach(d => d.setStyle(dotStyle(d.kind)));
+  });
+  totals();
+
+  // Jump-to places (only the ones with something recorded nearby), plus everything at once.
+  const near = (p, a) => { const q = decode(a.p[0])[0]; return Math.abs(q[0] - p[1]) < 0.8 && Math.abs(q[1] - p[2]) < 1; };
+  const shown = PLACES.filter(p => D.activities.some(a => near(p, a)));
+  $("places").innerHTML = "<span>Jump to</span>" + shown.map((p, i) => `<button type="button" data-i="${PLACES.indexOf(p)}" ${i === 0 ? 'aria-current="true"' : ""}>${p[0]}</button>`).join("")
+    + `<button type="button" data-all="1">Everywhere</button>`;
+  $("places").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("places").querySelectorAll("button").forEach(x => x.removeAttribute("aria-current")); b.setAttribute("aria-current", "true");
+    if (b.dataset.all) map.flyToBounds(L.featureGroup(lines).getBounds(), { padding: [30, 30], duration: 1.2 });
+    else { const p = PLACES[+b.dataset.i]; map.flyTo([p[1], p[2]], p[3], { duration: 1.2 }); }
+  });
+
+  const first = D.activities[0].d, last = D.activities[D.activities.length - 1].d;
+  $("foot").textContent = `From Strava, ${fmtDate(first)} through ${fmtDate(last)}. Nike Run Club runs are on the way.`;
+})();
+</script>
+</body>
+</html>
