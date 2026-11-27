@@ -125,7 +125,7 @@ def main(src, out):
         segs = [simplify(s, TOL_M) for s in split_gaps(pts)]
         when = datetime.datetime.strptime(r[iD], "%b %d, %Y, %I:%M:%S %p").replace(tzinfo=datetime.timezone.utc)
         acts.append({"k": kind, "d": when.astimezone(ET_TZ).strftime("%Y-%m-%d"), "t": when.isoformat(), "m": round(float(r[iM] or 0) / 1609.344, 2),
-                     "p": [encode(s) for s in segs]})
+                     "n": len(pts), "p": [encode(s) for s in segs]})
     acts.sort(key=lambda a: a["d"])
     json.dump({"source": "strava", "built": datetime.date.today().isoformat(), "activities": acts},
               open(out, "w"), separators=(",", ":"))
@@ -140,15 +140,21 @@ def add_nike(out, nike_dir):
     """Add Nike Run Club runs (TCX), skipping any that Strava already has (same start within 15 min)."""
     import glob, re
     D = json.load(open(out))
-    have = [datetime.datetime.fromisoformat(a["t"]) for a in D["activities"] if a.get("t")]
-    added = dup = nogps = 0
+    have = [(datetime.datetime.fromisoformat(a["t"]), a) for a in D["activities"] if a.get("t")]
+    added = dup = nogps = swapped = 0
     for f in glob.glob(os.path.join(nike_dir, "*.tcx")):
         s = open(f, encoding="utf-8", errors="ignore").read()
         sport = re.search(r'<Activity Sport="([^"]*)"', s).group(1)
         if sport not in ("Running", "undefined"): continue
         t = datetime.datetime.fromisoformat(re.search(r"<Id>\s*([^<\s]*)\s*</Id>", s).group(1).replace("Z", "+00:00"))
-        if any(abs((t - h).total_seconds()) < 900 for h in have): dup += 1; continue
         pts = [p for p in read_tcx(s.encode()) if abs(p[0]) > 0.01 or abs(p[1]) > 0.01]
+        same = [a for h, a in have if abs((t - h).total_seconds()) < 900]
+        if same:
+            # The same run is in Strava (which only keeps runs with GPS). Use whichever copy has the fuller GPS track.
+            dup += 1
+            if len(pts) > 1.25 * same[0].get("n", 0):
+                same[0]["p"] = [encode(simplify(seg, TOL_M)) for seg in split_gaps(pts)]; swapped += 1
+            continue
         if len(pts) < 2: nogps += 1; continue
         meters = sum(float(x) for x in re.findall(r"<Lap[^>]*>\s*<TotalTimeSeconds>\s*[^<]*</TotalTimeSeconds>\s*<DistanceMeters>\s*([^<\s]*)", s))
         local = t.astimezone(ET_TZ)
@@ -157,8 +163,9 @@ def add_nike(out, nike_dir):
         added += 1
     D["activities"].sort(key=lambda a: a["d"])
     D["source"] = "strava+nrc"
+    for a in D["activities"]: a.pop("n", None)
     json.dump(D, open(out, "w"), separators=(",", ":"))
-    print("nike: added", added, "already in strava", dup, "no gps", nogps, "bytes", os.path.getsize(out))
+    print("nike: added", added, "already in strava", dup, "(Nike's GPS used for", swapped, ") no gps", nogps, "bytes", os.path.getsize(out))
 
 
 if __name__ == "__main__":
