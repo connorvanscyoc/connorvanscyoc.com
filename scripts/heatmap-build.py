@@ -1,6 +1,6 @@
 """Turn a Strava archive into the heatmap's data file.
 
-Usage: python3 build.py <unzipped archive dir> <out tracks.json>
+Usage: python3 build.py <unzipped Strava archive dir> <out tracks.json> [<Nike export tcx dir>]
 Keeps rides, runs, walks and hikes. Each track is simplified (points closer
 than ~6 m to the line are dropped) and stored as an encoded polyline.
 """
@@ -11,6 +11,8 @@ import fitdecode
 KEEP = {"Ride": "ride", "Run": "run", "Walk": "walk", "Hike": "hike",
         "E-Bike Ride": "ride", "Virtual Ride": None, "Trail Run": "run"}
 TOL_M = 6.0
+from zoneinfo import ZoneInfo
+ET_TZ = ZoneInfo("America/New_York")
 
 
 def read_gpx(data):
@@ -121,8 +123,8 @@ def main(src, out):
         if len(pts) < 2:
             skipped["no GPS: " + r[iT]] = skipped.get("no GPS: " + r[iT], 0) + 1; continue
         segs = [simplify(s, TOL_M) for s in split_gaps(pts)]
-        when = datetime.datetime.strptime(r[iD], "%b %d, %Y, %I:%M:%S %p")
-        acts.append({"k": kind, "d": when.strftime("%Y-%m-%d"), "m": round(float(r[iM] or 0) / 1609.344, 2),
+        when = datetime.datetime.strptime(r[iD], "%b %d, %Y, %I:%M:%S %p").replace(tzinfo=datetime.timezone.utc)
+        acts.append({"k": kind, "d": when.astimezone(ET_TZ).strftime("%Y-%m-%d"), "t": when.isoformat(), "m": round(float(r[iM] or 0) / 1609.344, 2),
                      "p": [encode(s) for s in segs]})
     acts.sort(key=lambda a: a["d"])
     json.dump({"source": "strava", "built": datetime.date.today().isoformat(), "activities": acts},
@@ -134,5 +136,31 @@ def main(src, out):
     print("bytes", os.path.getsize(out), "range", acts[0]["d"], acts[-1]["d"])
 
 
+def add_nike(out, nike_dir):
+    """Add Nike Run Club runs (TCX), skipping any that Strava already has (same start within 15 min)."""
+    import glob, re
+    D = json.load(open(out))
+    have = [datetime.datetime.fromisoformat(a["t"]) for a in D["activities"] if a.get("t")]
+    added = dup = nogps = 0
+    for f in glob.glob(os.path.join(nike_dir, "*.tcx")):
+        s = open(f, encoding="utf-8", errors="ignore").read()
+        sport = re.search(r'<Activity Sport="([^"]*)"', s).group(1)
+        if sport not in ("Running", "undefined"): continue
+        t = datetime.datetime.fromisoformat(re.search(r"<Id>\s*([^<\s]*)\s*</Id>", s).group(1).replace("Z", "+00:00"))
+        if any(abs((t - h).total_seconds()) < 900 for h in have): dup += 1; continue
+        pts = [p for p in read_tcx(s.encode()) if abs(p[0]) > 0.01 or abs(p[1]) > 0.01]
+        if len(pts) < 2: nogps += 1; continue
+        meters = sum(float(x) for x in re.findall(r"<Lap[^>]*>\s*<TotalTimeSeconds>\s*[^<]*</TotalTimeSeconds>\s*<DistanceMeters>\s*([^<\s]*)", s))
+        local = t.astimezone(ET_TZ)
+        D["activities"].append({"k": "run", "d": local.strftime("%Y-%m-%d"), "t": t.isoformat(), "m": round(meters / 1609.344, 2), "src": "nrc",
+                                "p": [encode(simplify(seg, TOL_M)) for seg in split_gaps(pts)]})
+        added += 1
+    D["activities"].sort(key=lambda a: a["d"])
+    D["source"] = "strava+nrc"
+    json.dump(D, open(out, "w"), separators=(",", ":"))
+    print("nike: added", added, "already in strava", dup, "no gps", nogps, "bytes", os.path.getsize(out))
+
+
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2])
+    if len(sys.argv) > 3: add_nike(sys.argv[2], sys.argv[3])
